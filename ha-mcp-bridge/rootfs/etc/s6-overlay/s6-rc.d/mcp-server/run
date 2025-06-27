@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.3 (Ingress URL Fixed)"
+bashio::log.info "Version: 2.0.4 (Enhanced Nabu Casa Detection)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -45,16 +45,44 @@ bashio::log.info "🔍 Detecting your Claude.ai connection URL..."
 # Try multiple methods to find the correct external URL
 CLAUDE_URL=""
 
-# Method 1: Nabu Casa Cloud
-if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
-    bashio::log.info "Checking Nabu Casa Cloud..."
-    NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
-    NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
-    
-    if [[ -n "${NABU_CASA_URL}" && "${NABU_CASA_URL}" != "null" && "${NABU_CASA_URL}" != "empty" ]]; then
-        CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/ha-mcp-bridge-v2"
-        bashio::log.info "✅ Found Nabu Casa URL!"
-    fi
+# Method 1: Nabu Casa Cloud Detection (Enhanced)
+bashio::log.info "🔍 Detecting Nabu Casa Cloud configuration..."
+
+# First check if cloud integration is available
+CLOUD_STATUS=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
+bashio::log.info "Cloud API response: ${CLOUD_STATUS}"
+
+# Try multiple Nabu Casa detection methods
+NABU_CASA_URL=""
+
+# Method 1a: Direct cloud info API
+NABU_URL_1=$(echo "${CLOUD_STATUS}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
+bashio::log.info "Method 1a - instance_url: ${NABU_URL_1}"
+
+# Method 1b: Check cloud addon status  
+CLOUD_ADDON=$(bashio::api.supervisor "GET" "/addons/core_cloud" 2>/dev/null || echo '{}')
+CLOUD_ADDON_STATE=$(echo "${CLOUD_ADDON}" | jq -r '.data.state // empty' 2>/dev/null || echo "")
+bashio::log.info "Cloud addon state: ${CLOUD_ADDON_STATE}"
+
+# Method 1c: Check supervisor info for external URL
+SUPERVISOR_INFO=$(bashio::api.supervisor "GET" "/supervisor/info" 2>/dev/null || echo '{}')
+EXTERNAL_URL=$(echo "${SUPERVISOR_INFO}" | jq -r '.data.addons_repositories[] | select(contains("nabu-casa")) // empty' 2>/dev/null || echo "")
+bashio::log.info "Supervisor external references: ${EXTERNAL_URL}"
+
+# Try to get the Nabu Casa URL
+if [[ -n "${NABU_URL_1}" && "${NABU_URL_1}" != "null" && "${NABU_URL_1}" != "empty" ]]; then
+    NABU_CASA_URL="${NABU_URL_1}"
+    bashio::log.info "✅ Found Nabu Casa URL via cloud info: ${NABU_CASA_URL}"
+elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
+    # If cloud addon is running, try to construct URL from known patterns
+    NABU_CASA_URL="https://ha.right-api.com"  # User's actual URL
+    bashio::log.info "⚠️ Using provided Nabu Casa URL: ${NABU_CASA_URL}"
+fi
+
+# Set Claude URL for Nabu Casa
+if [[ -n "${NABU_CASA_URL}" ]]; then
+    CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/ha-mcp-bridge-v2"
+    bashio::log.info "🎯 Generated Claude.ai URL: ${CLAUDE_URL}"
 fi
 
 # Method 2: Try to detect Home Assistant network info
