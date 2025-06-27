@@ -5,34 +5,35 @@ FROM $BUILD_FROM
 RUN apk add --no-cache \
     nodejs \
     npm \
-    wget \
-    curl \
-    git
+    jq \
+    curl
 
 # Set working directory
 WORKDIR /usr/src/app
 
-# Clone the source repository
-RUN git clone https://github.com/shaike1/ha-mcp-bridge.git . && \
-    npm ci --only=production && \
-    npm cache clean --force
+# Copy the local MCP server file
+COPY rootfs/usr/bin/mcp-server.js ./server.js
 
-# Copy add-on specific files
+# Make server executable
+RUN chmod +x ./server.js
+
+# Copy run script
 COPY rootfs /
 
-# Set permissions
-RUN chmod a+x /usr/bin/run.sh
+# Make run script executable
+RUN chmod +x /usr/bin/run.sh
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3003/health || exit 1
+    CMD curl -f http://localhost:3003/health || exit 1
 
 # Labels
 LABEL \
-  io.hass.name="HA MCP Bridge" \
-  io.hass.description="Model Context Protocol server for Home Assistant" \
-  io.hass.type="addon" \
-  io.hass.version="1.0.0"
+    io.hass.name="HA MCP Bridge" \
+    io.hass.description="Model Context Protocol server for Home Assistant integration with Claude.ai" \
+    io.hass.arch="armhf|aarch64|i386|amd64|armv7" \
+    io.hass.type="addon" \
+    io.hass.version="1.0.6"
 
-# The container will run the start script
-CMD ["/usr/bin/run.sh"]
+# Set entrypoint
+ENTRYPOINT ["/usr/bin/run.sh"]

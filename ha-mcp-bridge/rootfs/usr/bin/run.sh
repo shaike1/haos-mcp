@@ -74,4 +74,4 @@ cd /usr/src/app
 
 # Start the MCP server
 bashio::log.info "Starting MCP server with ingress and external access support..."
-exec node mcp-server.js
+exec node server.js
