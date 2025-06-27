@@ -1115,6 +1115,33 @@ const httpServer = http.createServer(async (req, res) => {
   
   const parsedUrl = url.parse(req.url, true);
   
+  // Handle ingress paths by stripping the ingress prefix
+  let actualPath = parsedUrl.pathname;
+  const ingressPrefix = '/api/hassio_ingress/ha-mcp-bridge-v2';
+  if (actualPath.startsWith(ingressPrefix)) {
+    actualPath = actualPath.substring(ingressPrefix.length) || '/';
+    // Update parsedUrl to use the actual path
+    parsedUrl.pathname = actualPath;
+    console.log(`🔀 Ingress request: ${req.url} -> ${actualPath}`);
+  }
+  
+  // Root path handler for ingress health checks  
+  if (req.method === 'GET' && parsedUrl.pathname === '/') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'ok', 
+      service: 'HA MCP Bridge',
+      version: '2.0.6',
+      endpoints: [
+        '/.well-known/oauth-authorization-server',
+        '/oauth/authorize', 
+        '/oauth/callback',
+        '/tokens'
+      ]
+    }));
+    return;
+  }
+
   // OAuth discovery endpoint
   if (req.method === 'GET' && parsedUrl.pathname === '/.well-known/oauth-authorization-server') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -2406,7 +2433,7 @@ httpServer.timeout = 60000; // 60 seconds request timeout
 httpServer.keepAliveTimeout = 65000; // 65 seconds keep-alive
 httpServer.headersTimeout = 66000; // 66 seconds headers timeout
 
-const PORT = process.env.PORT || 3007; // Use environment PORT or 3007 as fallback
+const PORT = process.env.PORT || 3003; // Use environment PORT or 3003 as fallback
 console.log('Environment PORT:', process.env.PORT);
 console.log('Config port:', PORT);
 httpServer.listen(PORT, '0.0.0.0', () => {
