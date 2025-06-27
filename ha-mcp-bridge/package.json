@@ -1,0 +1,13 @@
+{
+  "name": "ha-mcp-bridge",
+  "version": "1.0.8",
+  "description": "Home Assistant MCP Bridge Add-on",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0"
+  }
+}

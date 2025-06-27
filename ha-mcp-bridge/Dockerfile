@@ -11,6 +11,12 @@ RUN apk add --no-cache \
 # Set working directory
 WORKDIR /usr/src/app
 
+# Copy package.json first
+COPY package.json ./
+
+# Install dependencies 
+RUN npm install --production
+
 # Copy the local MCP server file
 COPY rootfs/usr/bin/mcp-server.js ./server.js
 
