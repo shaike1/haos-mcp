@@ -1,0 +1,24 @@
+name: "HA MCP Bridge"
+version: "1.0.0"
+slug: "ha-mcp-bridge"
+description: "Model Context Protocol server for Home Assistant integration with Claude.ai"
+url: "https://github.com/shaike1/ha-addon-repository/tree/main/ha-mcp-bridge"
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+init: false
+ports:
+  3003/tcp: 3003
+ports_description:
+  3003/tcp: "MCP Server HTTP Port"
+options:
+  admin_password: "changeme123!"
+  log_level: "info"
+schema:
+  admin_password: "str"
+  log_level: "list(debug|info|warning|error)"
+hassio_api: true
+homeassistant_api: true
