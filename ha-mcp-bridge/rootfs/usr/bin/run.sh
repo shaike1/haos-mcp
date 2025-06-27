@@ -39,16 +39,17 @@ if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
     NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
     
     if [[ -n "${NABU_CASA_URL}" ]]; then
-        export SERVER_URL="${NABU_CASA_URL}:3003"
-        bashio::log.info "Configured for Nabu Casa access: ${SERVER_URL}"
+        # For Nabu Casa with ingress, use standard HTTPS port (443)
+        export SERVER_URL="${NABU_CASA_URL}/api/hassio_ingress/ha_mcp_bridge"
+        bashio::log.info "Configured for Nabu Casa ingress access: ${SERVER_URL}"
     else
         bashio::log.warning "Nabu Casa URL not available, using localhost"
         export SERVER_URL="http://localhost:3003"
     fi
 else
-    # Default fallback
-    export SERVER_URL="http://localhost:3003"
-    bashio::log.info "Using default server URL: ${SERVER_URL}"
+    # For port forwarding, use direct port access
+    export SERVER_URL="https://your-domain.com:3003"
+    bashio::log.info "Using port forwarding server URL: ${SERVER_URL}"
 fi
 
 # OAuth redirect URI

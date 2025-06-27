@@ -23,7 +23,7 @@ Transform your Home Assistant into an MCP server that Claude.ai can connect to, 
 After starting the add-on:
 1. **Check the Logs tab** - your external URL will be displayed like this:
    ```
-   ✅ External URL: https://abc123.ui.nabu-casa.com:3003
+   ✅ External URL: https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge
    ```
 2. **Copy this exact URL** - you'll need it for Claude.ai
 3. **Available for copy-paste** directly from the logs
@@ -32,7 +32,7 @@ After starting the add-on:
 1. Open **Claude.ai** → **Settings** → **Feature Preview**
 2. Enable **Model Context Protocol** 
 3. Click **Add MCP Server**
-4. **Paste your URL** from step 2 (e.g., `https://abc123.ui.nabu-casa.com:3003`)
+4. **Paste your URL** from step 2 (e.g., `https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge`)
 5. Complete OAuth authentication when prompted
 
 ## 🔧 How It Works
@@ -71,17 +71,17 @@ After starting the add-on:
 
 **The add-on will show your URL in the Logs tab after starting:**
 
-### **Nabu Casa Users**
+### **Nabu Casa Users (with Ingress)**
 ```
-[INFO] External URL: https://abc123.ui.nabu-casa.com:3003
+[INFO] External URL: https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge
 ```
-👆 **Copy this exact URL** to use in Claude.ai
+👆 **Copy this exact URL** - uses port 443 (standard HTTPS) via Home Assistant ingress
 
-### **Self-Hosted Users**
+### **Self-Hosted Users (Port Forwarding)**
 ```
 [INFO] External URL: https://your-domain.com:3003
 ```
-👆 **Copy this URL** (make sure port 3003 is forwarded)
+👆 **Copy this URL** - uses direct port 3003 (make sure it's forwarded)
 
 ## 🛠️ Troubleshooting
 
