@@ -101,6 +101,111 @@ loadSessionData();
 console.log('SESSION PERSISTENCE ENABLED: Sessions will be saved and restored');
 
 // ============================================================================
+// PHASE 3 HYBRID BRIDGE: Integration Detection & Communication
+// ============================================================================
+
+class IntegrationBridge {
+  constructor() {
+    this.integrationAvailable = false;
+    this.lastCheck = 0;
+    this.checkInterval = 30000; // Check every 30 seconds
+    this.integrationServices = [];
+    this.integrationCapabilities = {};
+  }
+
+  async detectIntegration(sessionToken = null) {
+    const now = Date.now();
+    if (now - this.lastCheck < this.checkInterval) {
+      return this.integrationAvailable;
+    }
+
+    try {
+      console.log('🔍 BRIDGE: Checking for MCP Bridge Integration...');
+      
+      // Check if integration is loaded via HA API
+      const entities = await haRequest('/states', {}, sessionToken);
+      const integrationEntities = entities.filter(e => 
+        e.entity_id.startsWith('sensor.mcp_bridge')
+      );
+      
+      if (integrationEntities.length > 0) {
+        console.log('✅ BRIDGE: Integration detected! Found entities:', integrationEntities.map(e => e.entity_id));
+        this.integrationAvailable = true;
+        
+        // Get integration capabilities
+        const capabilitiesSensor = integrationEntities.find(e => 
+          e.entity_id.includes('capabilities')
+        );
+        
+        if (capabilitiesSensor && capabilitiesSensor.attributes) {
+          this.integrationCapabilities = capabilitiesSensor.attributes;
+          console.log('📋 BRIDGE: Integration capabilities:', this.integrationCapabilities);
+        }
+        
+        // Check available services
+        // Check available services via API first, fallback to HA services
+        let services;
+        try {
+          const apiStatus = await haRequest('/api/mcp_bridge/status', {}, sessionToken);
+          services = { mcp_bridge: apiStatus.services || {} };
+          console.log('🛠️ BRIDGE: Using API for service detection');
+        } catch (apiError) {
+          console.log('⚠️ BRIDGE: API not available, using HA services');
+          services = await haRequest('/services', {}, sessionToken);
+        }        if (services.mcp_bridge) {
+          this.integrationServices = Object.keys(services.mcp_bridge);
+          console.log('🛠️ BRIDGE: Integration services:', this.integrationServices);
+        }
+      } else {
+        console.log('❌ BRIDGE: Integration not detected - using add-on tools only');
+        this.integrationAvailable = false;
+        this.integrationCapabilities = {};
+        this.integrationServices = [];
+      }
+      
+      this.lastCheck = now;
+      return this.integrationAvailable;
+      
+    } catch (error) {
+      console.error('🚨 BRIDGE: Error detecting integration:', error.message);
+      this.integrationAvailable = false;
+      return false;
+    }
+  }
+
+  async callIntegrationService(serviceName, serviceData, sessionToken = null) {
+    if (!this.integrationAvailable) {
+      throw new Error('Integration not available');
+    }
+
+    try {
+      console.log(`🔗 BRIDGE: Calling integration service: ${serviceName}`);
+      const result = await haRequest(`/api/mcp_bridge/${serviceName}`, {
+        method: 'POST',
+        body: JSON.stringify(serviceData)
+      }, sessionToken);
+      
+      console.log(`✅ BRIDGE: Integration service completed: ${serviceName}`);
+      return result;
+    } catch (error) {
+      console.error(`🚨 BRIDGE: Integration service failed: ${serviceName}`, error.message);
+      throw error;
+    }
+  }
+
+  isServiceAvailable(serviceName) {
+    return this.integrationAvailable && this.integrationServices.includes(serviceName);
+  }
+
+  hasCapability(capability) {
+    return this.integrationAvailable && this.integrationCapabilities[capability] === true;
+  }
+}
+
+// Global integration bridge instance
+const integrationBridge = new IntegrationBridge();
+
+// ============================================================================
 // PHASE 1 ENHANCEMENT: WebSocket Manager for Real-time HA Communication
 // ============================================================================
 
@@ -382,9 +487,16 @@ async function haRequest(endpoint, options = {}, sessionToken = null) {
   }
 }
 
-// Get available Home Assistant tools
-async function getTools() {
-  return [
+// Get available Home Assistant tools - HYBRID VERSION
+async function getTools(sessionToken = null) {
+  // Detect integration capabilities
+  await integrationBridge.detectIntegration(sessionToken);
+  
+  console.log(`🔧 HYBRID TOOLS: Integration available: ${integrationBridge.integrationAvailable}`);
+  if (integrationBridge.integrationAvailable) {
+    console.log(`🔧 HYBRID TOOLS: Integration services: ${integrationBridge.integrationServices.join(', ')}`);
+  }
+  const addonTools = [
     {
       name: "get_entities",
       description: "Get all Home Assistant entities or filter by domain",
@@ -492,10 +604,147 @@ async function getTools() {
       }
     }
   ];
+
+  // Add integration-specific advanced tools if available
+  const integrationTools = [];
+  
+  if (integrationBridge.hasCapability('dynamic_scene_creation')) {
+    integrationTools.push({
+      name: "create_dynamic_scene",
+      description: "🚀 ADVANCED: Create dynamic scenes with complex configurations (Integration)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Scene name" },
+          entities: {
+            type: "array",
+            description: "List of entities with their desired states",
+            items: {
+              type: "object",
+              properties: {
+                entity_id: { type: "string", description: "Entity ID" },
+                state: { type: "string", description: "Desired state" },
+                brightness: { type: "number", description: "Brightness (1-255)" },
+                color_temp: { type: "number", description: "Color temperature (153-500)" },
+                temperature: { type: "number", description: "Temperature (5-35)" }
+              },
+              required: ["entity_id"]
+            }
+          }
+        },
+        required: ["name", "entities"]
+      }
+    });
+  }
+  
+  if (integrationBridge.hasCapability('automation_management')) {
+    integrationTools.push({
+      name: "modify_automation",
+      description: "🚀 ADVANCED: Create or modify automations with templates (Integration)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Automation name" },
+          template: { type: "string", description: "Template: motion_light, sunset_scene, presence_climate, custom" },
+          trigger_entity: { type: "string", description: "Trigger entity ID" },
+          target_entity: { type: "string", description: "Target entity ID" },
+          config: { type: "object", description: "Additional configuration" }
+        },
+        required: ["name"]
+      }
+    });
+  }
+  
+  if (integrationBridge.hasCapability('bulk_device_control')) {
+    integrationTools.push({
+      name: "bulk_device_control",
+      description: "🚀 ADVANCED: Control multiple devices with transaction support (Integration)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          operations: {
+            type: "array",
+            description: "List of operations to perform",
+            items: {
+              type: "object",
+              properties: {
+                entity_id: { type: "string", description: "Entity ID" },
+                action: { type: "string", description: "Action to perform" },
+                params: { type: "object", description: "Action parameters" }
+              },
+              required: ["entity_id", "action"]
+            }
+          },
+          rollback_on_error: { type: "boolean", description: "Rollback if any operation fails" }
+        },
+        required: ["operations"]
+      }
+    });
+  }
+  
+  if (integrationBridge.hasCapability('dashboard_generation')) {
+    integrationTools.push({
+      name: "generate_dashboard",
+      description: "🚀 ADVANCED: Generate Lovelace dashboard configurations (Integration)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Dashboard title" },
+          area_id: { type: "string", description: "Area/room ID" },
+          type: { type: "string", description: "Dashboard type: room, security, energy" }
+        },
+        required: ["title"]
+      }
+    });
+  }
+
+  const allTools = [...addonTools, ...integrationTools];
+  
+  console.log(`🔧 HYBRID TOOLS: Returning ${allTools.length} tools (${addonTools.length} add-on + ${integrationTools.length} integration)`);
+  if (integrationTools.length > 0) {
+    console.log(`🚀 Advanced tools available: ${integrationTools.map(t => t.name).join(', ')}`);
+  }
+  
+  return allTools;
 }
 
-// Call a tool - now accepts sessionToken for HA connection
+// Call a tool - HYBRID VERSION with integration routing
 async function callTool(name, args, sessionToken = null) {
+  // Check if this is an integration tool
+  const integrationTools = ['create_dynamic_scene', 'modify_automation', 'bulk_device_control', 'generate_dashboard'];
+  
+  if (integrationTools.includes(name)) {
+    // Ensure integration is available
+    await integrationBridge.detectIntegration(sessionToken);
+    
+    if (integrationBridge.isServiceAvailable(name)) {
+      console.log(`🚀 HYBRID: Routing ${name} to integration`);
+      try {
+        const result = await integrationBridge.callIntegrationService(name, args, sessionToken);
+        return {
+          content: [{
+            type: "text",
+            text: `✅ Advanced operation completed via integration: ${JSON.stringify(result, null, 2)}`
+          }]
+        };
+      } catch (error) {
+        console.error(`🚨 HYBRID: Integration tool ${name} failed, falling back to add-on:`, error.message);
+        // Continue to add-on fallback below
+      }
+    } else {
+      console.log(`⚠️ HYBRID: Integration tool ${name} not available, using add-on fallback`);
+      // Provide limited add-on alternative for advanced tools
+      if (name === 'create_dynamic_scene') {
+        return {
+          content: [{
+            type: "text",
+            text: `⚠️ Dynamic scene creation requires the MCP Bridge Integration. Using basic scene approach instead. You can manually create a scene via HA UI with the entities: ${JSON.stringify(args.entities, null, 2)}`
+          }]
+        };
+      }
+      // Continue to normal add-on tool processing
+    }
+  }
   console.log(`🔧 TOOL CALL: ${name}`);
   console.log(`🔧 Tool arguments:`, JSON.stringify(args, null, 2));
   console.log(`🔧 Session token available:`, sessionToken ? 'YES' : 'NO');
@@ -1657,7 +1906,15 @@ const httpServer = http.createServer(async (req, res) => {
           
           setTimeout(async () => {
             try {
-              const tools = await getTools();
+              // Pass session token for integration detection
+              let sessionTokenForTools = null;
+              if (sessionId) {
+                const existingSession = sessions.get(sessionId);
+                if (existingSession && existingSession.authenticated && existingSession.adminSessionToken) {
+                  sessionTokenForTools = existingSession.adminSessionToken;
+                }
+              }
+              const tools = await getTools(sessionTokenForTools);
               
               // Send tools as a tools/list_changed notification per MCP spec
               const toolsNotification = {
@@ -1940,7 +2197,15 @@ const httpServer = http.createServer(async (req, res) => {
             // HACK: Since Claude.ai only requests prompts/list and never tools/list,
             // we'll send the tools response when it asks for prompts
             console.log('HACK: Claude.ai requested prompts/list, sending tools instead!');
-            const tools = await getTools();
+            // Pass session token for integration detection
+            let sessionTokenForTools = null;
+            if (sessionId) {
+              const sessionData = sessions.get(sessionId);
+              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
+                sessionTokenForTools = sessionData.adminSessionToken;
+              }
+            }
+            const tools = await getTools(sessionTokenForTools);
             response = {
               jsonrpc: '2.0',
               id: message.id,
@@ -1952,7 +2217,15 @@ const httpServer = http.createServer(async (req, res) => {
             console.log('Tools being sent:', tools.map(t => t.name).join(', '));
           } else if (message.method === 'tools/list') {
             console.log('SUCCESS: Claude.ai is requesting tools/list!');
-            const tools = await getTools();
+            // Pass session token for integration detection
+            let sessionTokenForTools = null;
+            if (sessionId) {
+              const sessionData = sessions.get(sessionId);
+              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
+                sessionTokenForTools = sessionData.adminSessionToken;
+              }
+            }
+            const tools = await getTools(sessionTokenForTools);
             response = {
               jsonrpc: '2.0',
               id: message.id,
@@ -1996,7 +2269,15 @@ const httpServer = http.createServer(async (req, res) => {
           } else {
             // ULTIMATE HACK: For any unknown method, send tools
             console.log(`ULTIMATE HACK: Unknown method '${message.method}', sending tools anyway!`);
-            const tools = await getTools();
+            // Pass session token for integration detection
+            let sessionTokenForTools = null;
+            if (sessionId) {
+              const sessionData = sessions.get(sessionId);
+              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
+                sessionTokenForTools = sessionData.adminSessionToken;
+              }
+            }
+            const tools = await getTools(sessionTokenForTools);
             response = {
               jsonrpc: '2.0',
               id: message.id,

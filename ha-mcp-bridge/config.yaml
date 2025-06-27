@@ -1,7 +1,7 @@
-name: "HA MCP Bridge Enhanced"
-version: "1.1.0"
+name: "HA MCP Bridge Hybrid"
+version: "2.0.0"
 slug: "ha-mcp-bridge"
-description: "Model Context Protocol server for Home Assistant integration with Claude.ai"
+description: "Hybrid MCP server with add-on + integration capabilities for Claude.ai"
 url: "https://github.com/shaike1/haos-mcp/tree/main/ha-mcp-bridge"
 arch:
   - aarch64

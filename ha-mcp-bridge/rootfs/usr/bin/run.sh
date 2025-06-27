@@ -5,7 +5,7 @@ CONFIG_PATH=/data/options.json
 
 # Log startup
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 1.0.4"
+bashio::log.info "Version: 2.0.0 (Hybrid Bridge)"
 bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 
 # Get basic configuration
@@ -73,5 +73,5 @@ bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
 cd /app
 
 # Start the MCP server
-bashio::log.info "Starting Enhanced MCP server (Phase 1) with WebSocket support..."
+bashio::log.info "Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
 exec node server.js

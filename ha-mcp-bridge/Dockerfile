@@ -1,8 +1,8 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Force rebuild with timestamp
-RUN echo "Build timestamp: $(date)" > /build-info.txt
+# Force rebuild - Phase 3 Hybrid Bridge
+RUN echo "Phase 3 Hybrid Bridge build: $(date)" > /build-info.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \
@@ -39,10 +39,10 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Labels
 LABEL \
     io.hass.name="HA MCP Bridge" \
-    io.hass.description="Model Context Protocol server for Home Assistant integration with Claude.ai" \
+    io.hass.description="Hybrid MCP server with add-on + integration capabilities for Claude.ai" \
     io.hass.arch="armhf|aarch64|i386|amd64|armv7" \
     io.hass.type="addon" \
-    io.hass.version="1.0.6"
+    io.hass.version="2.0.0"
 
 # Set entrypoint
 ENTRYPOINT ["/usr/bin/run.sh"]
