@@ -5,7 +5,7 @@ CONFIG_PATH=/data/options.json
 
 # Log startup
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.0 (Hybrid Bridge)"
+bashio::log.info "Version: 2.0.1 (Hybrid Bridge - Fixed)"
 bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 
 # Get basic configuration

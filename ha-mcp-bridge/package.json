@@ -1,6 +1,6 @@
 {
   "name": "ha-mcp-bridge-hybrid",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Hybrid Home Assistant MCP Bridge with Add-on + Integration capabilities",
   "type": "module",
   "main": "server.js",
