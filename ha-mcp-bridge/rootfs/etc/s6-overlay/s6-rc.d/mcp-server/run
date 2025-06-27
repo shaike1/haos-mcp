@@ -83,10 +83,12 @@ elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
     bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
 fi
 
-# Set Claude URL for Nabu Casa
+# Set Claude URL for Nabu Casa - Use direct port access for MCP
 if [[ -n "${NABU_CASA_URL}" ]]; then
-    CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/ha-mcp-bridge-v2"
-    bashio::log.info "🎯 Generated Claude.ai URL: ${CLAUDE_URL}"
+    # Try direct port access first (better for Claude.ai MCP)
+    CLAUDE_URL="${NABU_CASA_URL}:3003"
+    bashio::log.info "🎯 Generated Claude.ai URL (direct port): ${CLAUDE_URL}"
+    bashio::log.info "📝 Alternative ingress URL: ${NABU_CASA_URL}/api/hassio_ingress/[token]"
 fi
 
 # Method 2: Try to detect Home Assistant network info
