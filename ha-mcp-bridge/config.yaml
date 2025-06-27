@@ -1,6 +1,6 @@
-name: "HA MCP Bridge Hybrid"
+name: "HA MCP Bridge Hybrid v2"
 version: "2.0.1"
-slug: "ha-mcp-bridge"
+slug: "ha-mcp-bridge-v2"
 description: "Hybrid MCP server with add-on + integration capabilities for Claude.ai"
 url: "https://github.com/shaike1/haos-mcp/tree/main/ha-mcp-bridge"
 arch:
