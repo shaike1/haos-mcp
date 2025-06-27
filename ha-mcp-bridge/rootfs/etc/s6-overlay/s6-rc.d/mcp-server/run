@@ -83,13 +83,24 @@ elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
     bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
 fi
 
-# Set Claude URL for Nabu Casa - Use ingress through HA frontend
-if [[ -n "${NABU_CASA_URL}" ]]; then
-    # For MCP, we need to use the ingress URL that HA will generate
-    CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/DYNAMIC_TOKEN_PLACEHOLDER"
-    bashio::log.info "🎯 Ingress base URL: ${NABU_CASA_URL}/api/hassio_ingress/"
-    bashio::log.info "📝 To get the real URL: Go to HA Settings → Add-ons → HA MCP Bridge → OPEN WEB UI"
+# Try to detect the actual ingress URL from Home Assistant
+bashio::log.info "🔍 Attempting to discover ingress URL..."
+
+# Get addon info to find ingress URL
+ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
+INGRESS_URL=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
+
+if [[ -n "${INGRESS_URL}" && "${INGRESS_URL}" != "null" && "${INGRESS_URL}" != "empty" ]]; then
+    FULL_INGRESS_URL="${NABU_CASA_URL}${INGRESS_URL}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
+    CLAUDE_URL="${FULL_INGRESS_URL}"
+else
+    bashio::log.info "⚠️ Could not auto-detect ingress URL"
+    bashio::log.info "📝 Manual method: Go to HA Settings → Add-ons → HA MCP Bridge → OPEN WEB UI"
     bashio::log.info "📝 Copy the URL from your browser address bar"
+    CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/MANUAL_TOKEN_NEEDED"
 fi
 
 # Method 2: Try to detect Home Assistant network info
