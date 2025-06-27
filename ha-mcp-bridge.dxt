@@ -2,11 +2,11 @@
   "name": "Home Assistant MCP Bridge",
   "description": "Connect Claude.ai to your Home Assistant for smart home control",
   "server": {
-    "url": "https://ha.right-api.com:3003",
+    "url": "REPLACE_WITH_YOUR_INGRESS_URL",
     "auth": {
       "type": "oauth2",
-      "authorization_endpoint": "https://ha.right-api.com:3003/oauth/authorize",
-      "token_endpoint": "https://ha.right-api.com:3003/oauth/token",
+      "authorization_endpoint": "REPLACE_WITH_YOUR_INGRESS_URL/oauth/authorize",
+      "token_endpoint": "REPLACE_WITH_YOUR_INGRESS_URL/oauth/token",
       "client_id": "claude-ai-client",
       "scopes": ["mcp"]
     }
