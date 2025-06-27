@@ -70,8 +70,8 @@ bashio::log.info "Port: ${PORT}"
 bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
 
 # Change to application directory
-cd /usr/src/app
+cd /app
 
 # Start the MCP server
-bashio::log.info "Starting MCP server with ingress and external access support..."
+bashio::log.info "Starting Enhanced MCP server (Phase 1) with WebSocket support..."
 exec node server.js

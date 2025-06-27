@@ -1,13 +1,14 @@
 {
-  "name": "ha-mcp-bridge",
-  "version": "1.0.8",
-  "description": "Home Assistant MCP Bridge Add-on",
+  "name": "ha-mcp-bridge-enhanced",
+  "version": "1.1.0",
+  "description": "Enhanced Home Assistant MCP Bridge Add-on with WebSocket support",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "node-fetch": "^3.3.0"
+    "node-fetch": "^3.3.0",
+    "ws": "^8.14.0"
   }
 }

@@ -5,6 +5,7 @@ import url from 'url';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
+import WebSocket from 'ws';
 
 // HA Configuration - ONLY set per session via login form (NO environment variables)
 let HA_HOST = '';
@@ -98,6 +99,205 @@ const adminSessions = new Map(); // Track authenticated admin sessions
 // ENABLED: Load existing sessions on startup
 loadSessionData();
 console.log('SESSION PERSISTENCE ENABLED: Sessions will be saved and restored');
+
+// ============================================================================
+// PHASE 1 ENHANCEMENT: WebSocket Manager for Real-time HA Communication
+// ============================================================================
+
+class HAWebSocketManager {
+  constructor() {
+    this.ws = null;
+    this.connected = false;
+    this.messageId = 1;
+    this.pendingRequests = new Map();
+    this.stateCache = new Map();
+    this.eventSubscriptions = new Set();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 10;
+  }
+
+  async connect() {
+    if (!HA_HOST || !HA_API_TOKEN) {
+      console.log('WebSocket: Waiting for HA credentials...');
+      return false;
+    }
+
+    try {
+      const wsUrl = `${HA_HOST.replace('http', 'ws')}/api/websocket`;
+      console.log(`WebSocket: Connecting to ${wsUrl}`);
+      
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.on('open', () => {
+        console.log('WebSocket: Connected to Home Assistant');
+        this.connected = true;
+        this.reconnectAttempts = 0;
+      });
+
+      this.ws.on('message', (data) => {
+        this.handleMessage(JSON.parse(data.toString()));
+      });
+
+      this.ws.on('close', () => {
+        console.log('WebSocket: Connection closed');
+        this.connected = false;
+        this.scheduleReconnect();
+      });
+
+      this.ws.on('error', (error) => {
+        console.error('WebSocket error:', error.message);
+        this.connected = false;
+      });
+
+      return true;
+    } catch (error) {
+      console.error('WebSocket connection failed:', error.message);
+      return false;
+    }
+  }
+
+  handleMessage(message) {
+    if (message.type === 'auth_required') {
+      this.authenticate();
+    } else if (message.type === 'auth_ok') {
+      console.log('WebSocket: Authenticated successfully');
+      this.subscribeToEvents();
+      this.loadAllStates();
+    } else if (message.type === 'result') {
+      this.handleResult(message);
+    } else if (message.type === 'event') {
+      this.handleEvent(message.event);
+    }
+  }
+
+  authenticate() {
+    this.send({
+      type: 'auth',
+      access_token: HA_API_TOKEN
+    });
+  }
+
+  async subscribeToEvents() {
+    // Subscribe to state changes for real-time updates
+    this.send({
+      id: this.messageId++,
+      type: 'subscribe_events',
+      event_type: 'state_changed'
+    });
+    
+    console.log('WebSocket: Subscribed to state_changed events');
+  }
+
+  async loadAllStates() {
+    // Load all entity states into cache
+    const id = this.messageId++;
+    this.send({
+      id,
+      type: 'get_states'
+    });
+    
+    this.pendingRequests.set(id, {
+      type: 'get_states',
+      resolve: (states) => {
+        states.forEach(state => {
+          this.stateCache.set(state.entity_id, state);
+        });
+        console.log(`WebSocket: Cached ${states.length} entity states`);
+      }
+    });
+  }
+
+  handleResult(message) {
+    const request = this.pendingRequests.get(message.id);
+    if (request) {
+      if (message.success) {
+        request.resolve(message.result);
+      } else {
+        request.reject && request.reject(new Error(message.error.message));
+      }
+      this.pendingRequests.delete(message.id);
+    }
+  }
+
+  handleEvent(event) {
+    if (event.event_type === 'state_changed') {
+      const { entity_id, new_state } = event.data;
+      if (new_state) {
+        this.stateCache.set(entity_id, new_state);
+        console.log(`WebSocket: State updated - ${entity_id}: ${new_state.state}`);
+      }
+    }
+  }
+
+  async callService(domain, service, serviceData = {}) {
+    if (!this.connected) {
+      throw new Error('WebSocket not connected to Home Assistant');
+    }
+
+    return new Promise((resolve, reject) => {
+      const id = this.messageId++;
+      
+      this.pendingRequests.set(id, {
+        type: 'call_service',
+        resolve,
+        reject
+      });
+
+      this.send({
+        id,
+        type: 'call_service',
+        domain,
+        service,
+        service_data: serviceData
+      });
+
+      // Timeout after 30 seconds
+      setTimeout(() => {
+        if (this.pendingRequests.has(id)) {
+          this.pendingRequests.delete(id);
+          reject(new Error('Service call timeout'));
+        }
+      }, 30000);
+    });
+  }
+
+  getEntityState(entityId) {
+    return this.stateCache.get(entityId);
+  }
+
+  getAllStates() {
+    return Array.from(this.stateCache.values());
+  }
+
+  send(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    }
+  }
+
+  scheduleReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+      console.log(`WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connect();
+      }, delay);
+    }
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+      this.connected = false;
+    }
+  }
+}
+
+// Global WebSocket manager instance
+const haWebSocket = new HAWebSocketManager();
 
 console.log('Admin Authentication:');
 console.log('Username:', ADMIN_USERNAME);

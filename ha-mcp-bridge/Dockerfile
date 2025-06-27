@@ -1,6 +1,9 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
+# Force rebuild with timestamp
+RUN echo "Build timestamp: $(date)" > /build-info.txt
+
 # Install Node.js and dependencies
 RUN apk add --no-cache \
     nodejs \
@@ -9,25 +12,25 @@ RUN apk add --no-cache \
     curl
 
 # Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copy package.json first
 COPY package.json ./
 
 # Install dependencies 
-RUN npm install --production
+RUN npm install --production && npm cache clean --force
 
-# Copy the local MCP server file
+# Copy the enhanced MCP server
 COPY rootfs/usr/bin/mcp-server.js ./server.js
 
-# Make server executable
-RUN chmod +x ./server.js
-
-# Copy run script
+# Copy run script and make executable
 COPY rootfs /
-
-# Make run script executable
 RUN chmod +x /usr/bin/run.sh
+
+# Create app user for security
+RUN addgroup -g 1000 app && adduser -u 1000 -G app -s /bin/sh -D app
+RUN chown -R app:app /app
+USER app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
