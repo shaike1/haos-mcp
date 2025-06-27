@@ -8,7 +8,7 @@ Home Assistant add-ons for Model Context Protocol (MCP) integration, enabling Cl
 2. Click the **⋮** menu in the top right and select **Repositories**
 3. Add this repository URL:
    ```
-   https://github.com/shaike1/ha-addon-repository
+   https://github.com/shaike1/haos-mcp
    ```
 4. Find "HA MCP Bridge" in the add-on store and click **Install**
 
@@ -20,7 +20,7 @@ Transform your Home Assistant into an MCP server that Claude.ai can connect to, 
 ## Support
 
 - **Source Code**: [GitHub Repository](https://github.com/shaike1/ha-mcp-bridge)
-- **Issues**: [Report problems](https://github.com/shaike1/ha-addon-repository/issues)
+- **Issues**: [Report problems](https://github.com/shaike1/haos-mcp/issues)
 
 ## License
 

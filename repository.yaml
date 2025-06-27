@@ -1,4 +1,4 @@
 name: "HA MCP Add-ons by Shaike"
-url: "https://github.com/shaike1/ha-addon-repository"
+url: "https://github.com/shaike1/haos-mcp"
 maintainer: "Shaike Mishor"
 description: "Home Assistant add-ons for Model Context Protocol (MCP) integration with Claude.ai"
