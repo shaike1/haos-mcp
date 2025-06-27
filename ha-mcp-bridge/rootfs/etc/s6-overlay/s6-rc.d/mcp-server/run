@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.4 (Enhanced Nabu Casa Detection)"
+bashio::log.info "Version: 2.0.5 (Manual Nabu Casa URL Config)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -15,6 +15,7 @@ bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
 LOG_LEVEL="$(bashio::config 'log_level')"
+CONFIGURED_NABU_URL="$(bashio::config 'nabu_casa_url')"
 
 bashio::log.info "External access method: ${EXTERNAL_METHOD}"
 
@@ -70,13 +71,16 @@ EXTERNAL_URL=$(echo "${SUPERVISOR_INFO}" | jq -r '.data.addons_repositories[] | 
 bashio::log.info "Supervisor external references: ${EXTERNAL_URL}"
 
 # Try to get the Nabu Casa URL
-if [[ -n "${NABU_URL_1}" && "${NABU_URL_1}" != "null" && "${NABU_URL_1}" != "empty" ]]; then
+if [[ -n "${CONFIGURED_NABU_URL}" && "${CONFIGURED_NABU_URL}" != "null" ]]; then
+    NABU_CASA_URL="${CONFIGURED_NABU_URL}"
+    bashio::log.info "✅ Using configured Nabu Casa URL: ${NABU_CASA_URL}"
+elif [[ -n "${NABU_URL_1}" && "${NABU_URL_1}" != "null" && "${NABU_URL_1}" != "empty" ]]; then
     NABU_CASA_URL="${NABU_URL_1}"
     bashio::log.info "✅ Found Nabu Casa URL via cloud info: ${NABU_CASA_URL}"
 elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
     # If cloud addon is running, try to construct URL from known patterns
-    NABU_CASA_URL="https://ha.right-api.com"  # User's actual URL
-    bashio::log.info "⚠️ Using provided Nabu Casa URL: ${NABU_CASA_URL}"
+    NABU_CASA_URL="https://ha.right-api.com"  # Fallback URL
+    bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
 fi
 
 # Set Claude URL for Nabu Casa
