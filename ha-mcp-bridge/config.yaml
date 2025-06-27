@@ -1,5 +1,5 @@
 name: "HA MCP Bridge"
-version: "1.0.0"
+version: "1.0.1"
 slug: "ha-mcp-bridge"
 description: "Model Context Protocol server for Home Assistant integration with Claude.ai"
 url: "https://github.com/shaike1/haos-mcp/tree/main/ha-mcp-bridge"
@@ -10,15 +10,108 @@ arch:
   - armv7
   - i386
 init: false
+startup: services
+stage: stable
+
+# Network configuration
 ports:
   3003/tcp: 3003
 ports_description:
   3003/tcp: "MCP Server HTTP Port"
+
+# Web UI and Ingress
+webui: "http://[HOST]:[PORT:3003]"
+ingress: true
+ingress_port: 3003
+ingress_stream: false
+panel_icon: "mdi:home-assistant"
+panel_title: "MCP Bridge"
+
+# Add-on options
 options:
-  admin_password: "changeme123!"
+  # External access configuration
+  server_url: "https://your-domain.com"
+  external_port: 3003
+  external_access:
+    enabled: true
+    method: "nabu_casa"
+  
+  # Nabu Casa configuration
+  nabu_casa:
+    expose_port: true
+    auto_ssl: true
+  
+  # Basic settings
   log_level: "info"
+  debug: false
+  
+  # CORS origins
+  cors_origins: 
+    - "https://claude.ai"
+    - "https://app.claude.ai"
+  
+  # OAuth configuration
+  oauth:
+    enable: true
+    admin_username: "admin"
+    admin_password: "changeme123!"
+  
+  # Performance settings
+  timeouts:
+    request_timeout: 60000
+    keepalive_timeout: 65000
+    sse_ping_interval: 8000
+  
+  # Home Assistant integration
+  ha_integration:
+    use_supervisor_token: true
+    external_ha_url: ""
+    external_ha_token: ""
+
+# Configuration schema
 schema:
-  admin_password: "str"
+  server_url: "url"
+  external_port: "port"
+  external_access:
+    enabled: "bool"
+    method: "list(nabu_casa|port_forward|reverse_proxy)"
+  nabu_casa:
+    expose_port: "bool"
+    auto_ssl: "bool"
   log_level: "list(debug|info|warning|error)"
+  debug: "bool"
+  cors_origins: ["url"]
+  oauth:
+    enable: "bool"
+    admin_username: "str"
+    admin_password: "str"
+  timeouts:
+    request_timeout: "int(5000,300000)"
+    keepalive_timeout: "int(5000,300000)" 
+    sse_ping_interval: "int(1000,30000)"
+  ha_integration:
+    use_supervisor_token: "bool"
+    external_ha_url: "url?"
+    external_ha_token: "str?"
+
+# Home Assistant integration
 hassio_api: true
 homeassistant_api: true
+hassio_role: default
+
+# Service discovery
+discovery:
+  - homeassistant
+
+# Requirements
+host_network: false
+privileged: false
+full_access: false
+
+# Backup inclusion
+backup: include
+
+# Environment variables
+environment:
+  SUPERVISOR_TOKEN: "{{SUPERVISOR_TOKEN}}"
+  HASSIO_TOKEN: "{{HASSIO_TOKEN}}"
