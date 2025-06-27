@@ -1127,18 +1127,66 @@ const httpServer = http.createServer(async (req, res) => {
   
   // Root path handler for ingress health checks  
   if (req.method === 'GET' && parsedUrl.pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-      status: 'ok', 
-      service: 'HA MCP Bridge',
-      version: '2.0.7',
-      endpoints: [
-        '/.well-known/oauth-authorization-server',
-        '/oauth/authorize', 
-        '/oauth/callback',
-        '/tokens'
-      ]
-    }));
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    const serverUrl = process.env.SERVER_URL || 'https://ha.right-api.com';
+    res.end(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HA MCP Bridge - Ready for Claude.ai</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { color: #2196F3; border-bottom: 2px solid #2196F3; padding-bottom: 10px; margin-bottom: 20px; }
+        .url-box { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #2196F3; }
+        .url { font-family: monospace; font-size: 14px; word-break: break-all; font-weight: bold; color: #1976D2; }
+        .status { color: #4CAF50; font-weight: bold; }
+        .instructions { background: #fff3e0; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #FF9800; }
+        .endpoint { background: #f5f5f5; padding: 8px; margin: 5px 0; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">🏠 HA MCP Bridge v2.1.0</h1>
+        
+        <p class="status">✅ Status: Ready for Claude.ai connection</p>
+        
+        <h2>🎯 Claude.ai MCP URL</h2>
+        <div class="url-box">
+            <strong>Use this URL in Claude.ai:</strong><br>
+            <div class="url">${serverUrl}</div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Setup Instructions:</h3>
+            <ol>
+                <li>Copy the URL above</li>
+                <li>Download: <a href="https://raw.githubusercontent.com/shaike1/haos-mcp/main/ha-mcp-bridge.dxt" target="_blank">ha-mcp-bridge.dxt</a></li>
+                <li>Replace "REPLACE_WITH_YOUR_INGRESS_URL" with the URL above</li>
+                <li>Import the .dxt file into Claude.ai → Settings → MCP</li>
+                <li>Login with username: <strong>admin</strong> and your configured password</li>
+            </ol>
+        </div>
+        
+        <h3>🔗 Available Endpoints:</h3>
+        <div class="endpoint">/.well-known/oauth-authorization-server</div>
+        <div class="endpoint">/oauth/authorize</div>
+        <div class="endpoint">/oauth/callback</div>
+        <div class="endpoint">/oauth/token</div>
+        
+        <h3>🏠 Home Assistant Tools Available:</h3>
+        <ul>
+            <li>🏠 Light control (get_lights, control_light)</li>
+            <li>🌡️ Sensor monitoring (get_sensors)</li>
+            <li>🔌 Switch control (get_switches, control_switch)</li>
+            <li>🌡️ Climate control (get_climate, set_climate)</li>
+            <li>⚡ Automation triggers (run_automation)</li>
+            <li>📍 Areas and devices (get_areas, get_devices)</li>
+        </ul>
+    </div>
+</body>
+</html>
+    `);
     return;
   }
 
