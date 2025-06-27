@@ -1131,7 +1131,7 @@ const httpServer = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ 
       status: 'ok', 
       service: 'HA MCP Bridge',
-      version: '2.0.6',
+      version: '2.0.7',
       endpoints: [
         '/.well-known/oauth-authorization-server',
         '/oauth/authorize', 
