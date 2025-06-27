@@ -3,7 +3,7 @@ FROM $BUILD_FROM
 
 # Force complete rebuild - v2.0.1 Critical Fix
 RUN echo "CRITICAL-FIX-$(date +%s)" > /cache-break.txt
-RUN echo "Build: Phase 3 Hybrid Bridge v2.0.1" > /build-info.txt
+RUN echo "Build: Phase 3 Hybrid Bridge v2.0.2" > /build-info.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \

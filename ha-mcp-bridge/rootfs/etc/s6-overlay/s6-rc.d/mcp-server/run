@@ -1,11 +1,11 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start MCP Server service
+# Start MCP Server service with CLEAR URL and CREDENTIAL DISPLAY
 # ==============================================================================
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.1 (Hybrid Bridge - Fixed)"
+bashio::log.info "Version: 2.0.2 (Hybrid Bridge - Fixed)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -35,46 +35,98 @@ bashio::log.info "Using supervisor token for HA API access"
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# Configure server URL based on access method
+# ============================================================================
+# SMART URL DETECTION FOR CLAUDE.AI
+# ============================================================================
+
+bashio::log.info ""
+bashio::log.info "🔍 Detecting your Claude.ai connection URL..."
+
+# Try multiple methods to find the correct external URL
+CLAUDE_URL=""
+
+# Method 1: Nabu Casa Cloud
 if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
-    # Try to get Nabu Casa URL from supervisor
+    bashio::log.info "Checking Nabu Casa Cloud..."
     NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
     NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
     
-    if [[ -n "${NABU_CASA_URL}" ]]; then
-        # For Nabu Casa with ingress, use standard HTTPS port (443)
-        export SERVER_URL="${NABU_CASA_URL}/api/hassio_ingress/ha_mcp_bridge_v2"
-        bashio::log.info "Configured for Nabu Casa ingress access: ${SERVER_URL}"
-    else
-        bashio::log.warning "Nabu Casa URL not available, using localhost"
-        export SERVER_URL="http://localhost:3003"
+    if [[ -n "${NABU_CASA_URL}" && "${NABU_CASA_URL}" != "null" && "${NABU_CASA_URL}" != "empty" ]]; then
+        CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/ha_mcp_bridge_v2"
+        bashio::log.info "✅ Found Nabu Casa URL!"
     fi
-else
-    # For port forwarding, use direct port access
-    export SERVER_URL="https://your-domain.com:3003"
-    bashio::log.info "Using port forwarding server URL: ${SERVER_URL}"
 fi
 
-# OAuth redirect URI
-export OAUTH_REDIRECT_URI="${SERVER_URL}/oauth/callback"
+# Method 2: Try to detect Home Assistant network info
+if [[ -z "${CLAUDE_URL}" ]]; then
+    bashio::log.info "Checking local network..."
+    HA_NETWORK=$(bashio::api.supervisor "GET" "/network/info" 2>/dev/null || echo '{}')
+    HA_IP=$(echo "${HA_NETWORK}" | jq -r '.data.interfaces[] | select(.primary == true) | .ipv4.address[0]' 2>/dev/null || echo "")
+    
+    if [[ -n "${HA_IP}" ]]; then
+        CLAUDE_URL="http://${HA_IP}:8123/api/hassio_ingress/ha_mcp_bridge_v2"
+        bashio::log.info "🏠 Found local network IP: ${HA_IP}"
+    fi
+fi
 
-# Ingress configuration
+# Method 3: Fallback to detected container IP
+if [[ -z "${CLAUDE_URL}" ]]; then
+    CONTAINER_IP=$(hostname -i | awk '{print $1}' 2>/dev/null || echo "")
+    if [[ -n "${CONTAINER_IP}" ]]; then
+        CLAUDE_URL="http://${CONTAINER_IP}:8123/api/hassio_ingress/ha_mcp_bridge_v2"
+        bashio::log.info "🌐 Using container IP: ${CONTAINER_IP}"
+    fi
+fi
+
+# Final fallback
+if [[ -z "${CLAUDE_URL}" ]]; then
+    CLAUDE_URL="http://YOUR_HA_IP:8123/api/hassio_ingress/ha_mcp_bridge_v2"
+    bashio::log.warning "⚠️ Could not auto-detect URL - manual setup needed"
+fi
+
+# Set server URL for internal use
+export SERVER_URL="${CLAUDE_URL}"
+export OAUTH_REDIRECT_URI="${SERVER_URL}/oauth/callback"
 export INGRESS_URL="/api/hassio/app/ha_mcp_bridge_v2"
 
-# Timeout settings with defaults
+# Timeout settings
 export REQUEST_TIMEOUT="60000"
 export KEEPALIVE_TIMEOUT="65000"
 export SSE_PING_INTERVAL="8000"
 
-# Log final configuration
-bashio::log.info "External URL: ${SERVER_URL}"
-bashio::log.info "Ingress URL: ${INGRESS_URL}"
-bashio::log.info "Port: ${PORT}"
+# ============================================================================
+# DISPLAY CLEAR SETUP INSTRUCTIONS
+# ============================================================================
+
+bashio::log.info ""
+bashio::log.info "🎯 =================================="
+bashio::log.info "🎯    CLAUDE.AI SETUP INSTRUCTIONS"
+bashio::log.info "🎯 =================================="
+bashio::log.info ""
+bashio::log.info "📋 Step 1: Copy this URL for Claude.ai:"
+bashio::log.info "🔗 ${CLAUDE_URL}"
+bashio::log.info ""
+bashio::log.info "📋 Step 2: Login credentials when prompted:"
+bashio::log.info "👤 Username: admin"
+bashio::log.info "🔑 Password: ${ADMIN_PASSWORD}"
+bashio::log.info ""
+bashio::log.info "📋 Step 3: You'll also need a Home Assistant token:"
+bashio::log.info "🏠 Go to: Settings → Security → Long-lived access tokens"
+bashio::log.info "➕ Create new token → Copy and paste when prompted"
+bashio::log.info ""
+bashio::log.info "🎯 =================================="
+bashio::log.info ""
+
+# Log technical details
+bashio::log.info "Technical details:"
+bashio::log.info "Server URL: ${SERVER_URL}"
 bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
+bashio::log.info "Port: ${PORT}"
 
 # Change to application directory
 cd /app
 
 # Start the MCP server
-bashio::log.info "Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
+bashio::log.info ""
+bashio::log.info "🚀 Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
 exec node server.js
