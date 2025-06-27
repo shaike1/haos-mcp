@@ -1147,7 +1147,7 @@ const httpServer = http.createServer(async (req, res) => {
 </head>
 <body>
     <div class="container">
-        <h1 class="header">🏠 HA MCP Bridge v2.1.0</h1>
+        <h1 class="header">🏠 HA MCP Bridge v2.1.2</h1>
         
         <p class="status">✅ Status: Ready for Claude.ai connection</p>
         

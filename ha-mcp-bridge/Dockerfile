@@ -1,9 +1,10 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Force complete rebuild - v2.0.1 Critical Fix
-RUN echo "CRITICAL-FIX-$(date +%s)" > /cache-break.txt
-RUN echo "Build: Phase 3 Hybrid Bridge v2.0.2" > /build-info.txt
+# Force complete rebuild - v2.1.1 Web Interface Fix
+RUN echo "FORCE-REBUILD-$(date +%s)" > /cache-break.txt
+RUN echo "Build: v2.1.1 Web Interface + Ingress Detection" > /build-info.txt
+RUN echo "Container cache break: $(uuidgen)" > /force-update.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \
@@ -40,6 +41,6 @@ LABEL \
     io.hass.description="Hybrid MCP server with add-on + integration capabilities for Claude.ai" \
     io.hass.arch="armhf|aarch64|i386|amd64|armv7" \
     io.hass.type="addon" \
-    io.hass.version="2.0.2"
+    io.hass.version="2.1.1"
 
 # Use default S6 overlay entrypoint

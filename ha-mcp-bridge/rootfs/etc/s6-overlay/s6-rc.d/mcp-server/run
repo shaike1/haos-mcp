@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.7 (Fixed Ingress Path Handling + Icon)"
+bashio::log.info "Version: 2.1.2 (Web Interface + Ingress Detection)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
