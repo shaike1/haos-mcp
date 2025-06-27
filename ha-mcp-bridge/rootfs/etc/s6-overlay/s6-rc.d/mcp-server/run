@@ -1,0 +1,80 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start MCP Server service
+# ==============================================================================
+
+# Wait for supervisor to be ready
+bashio::log.info "Starting HA MCP Bridge Add-on..."
+bashio::log.info "Version: 2.0.1 (Hybrid Bridge - Fixed)"
+
+# Load configuration
+CONFIG_PATH=/data/options.json
+bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
+
+# Get basic configuration
+EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
+ADMIN_PASSWORD="$(bashio::config 'admin_password')"
+LOG_LEVEL="$(bashio::config 'log_level')"
+
+bashio::log.info "External access method: ${EXTERNAL_METHOD}"
+
+# Use fixed port 3003 as defined in config.yaml
+export PORT="3003"
+export LOG_LEVEL="${LOG_LEVEL}"
+
+# Basic OAuth configuration
+export OAUTH_ENABLED="true"
+export ADMIN_USERNAME="admin"
+export ADMIN_PASSWORD="${ADMIN_PASSWORD}"
+
+# Home Assistant integration using supervisor token
+export HA_URL="http://supervisor/core"
+export HA_TOKEN="${SUPERVISOR_TOKEN}"
+bashio::log.info "Using supervisor token for HA API access"
+
+# CORS origins for Claude.ai
+export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
+
+# Configure server URL based on access method
+if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
+    # Try to get Nabu Casa URL from supervisor
+    NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
+    NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
+    
+    if [[ -n "${NABU_CASA_URL}" ]]; then
+        # For Nabu Casa with ingress, use standard HTTPS port (443)
+        export SERVER_URL="${NABU_CASA_URL}/api/hassio_ingress/ha_mcp_bridge_v2"
+        bashio::log.info "Configured for Nabu Casa ingress access: ${SERVER_URL}"
+    else
+        bashio::log.warning "Nabu Casa URL not available, using localhost"
+        export SERVER_URL="http://localhost:3003"
+    fi
+else
+    # For port forwarding, use direct port access
+    export SERVER_URL="https://your-domain.com:3003"
+    bashio::log.info "Using port forwarding server URL: ${SERVER_URL}"
+fi
+
+# OAuth redirect URI
+export OAUTH_REDIRECT_URI="${SERVER_URL}/oauth/callback"
+
+# Ingress configuration
+export INGRESS_URL="/api/hassio/app/ha_mcp_bridge_v2"
+
+# Timeout settings with defaults
+export REQUEST_TIMEOUT="60000"
+export KEEPALIVE_TIMEOUT="65000"
+export SSE_PING_INTERVAL="8000"
+
+# Log final configuration
+bashio::log.info "External URL: ${SERVER_URL}"
+bashio::log.info "Ingress URL: ${INGRESS_URL}"
+bashio::log.info "Port: ${PORT}"
+bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
+
+# Change to application directory
+cd /app
+
+# Start the MCP server
+bashio::log.info "Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
+exec node server.js

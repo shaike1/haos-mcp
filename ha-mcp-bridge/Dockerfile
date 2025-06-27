@@ -24,14 +24,11 @@ RUN npm install --production && npm cache clean --force
 # Copy the enhanced MCP server
 COPY rootfs/usr/bin/mcp-server.js ./server.js
 
-# Copy run script and make executable
+# Copy rootfs structure for S6 overlay
 COPY rootfs /
-RUN chmod +x /usr/bin/run.sh
 
-# Create app user for security
-RUN addgroup -g 1000 app && adduser -u 1000 -G app -s /bin/sh -D app
-RUN chown -R app:app /app
-USER app
+# Ensure proper permissions for Home Assistant add-on
+RUN chown -R root:root /app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -43,7 +40,6 @@ LABEL \
     io.hass.description="Hybrid MCP server with add-on + integration capabilities for Claude.ai" \
     io.hass.arch="armhf|aarch64|i386|amd64|armv7" \
     io.hass.type="addon" \
-    io.hass.version="2.0.1"
+    io.hass.version="2.0.2"
 
-# Set entrypoint
-ENTRYPOINT ["/usr/bin/run.sh"]
+# Use default S6 overlay entrypoint
