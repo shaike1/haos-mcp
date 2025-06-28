@@ -1117,12 +1117,27 @@ const httpServer = http.createServer(async (req, res) => {
   
   // Handle ingress paths by stripping the ingress prefix
   let actualPath = parsedUrl.pathname;
-  const ingressPrefix = '/api/hassio_ingress/ha-mcp-bridge-v2';
-  if (actualPath.startsWith(ingressPrefix)) {
-    actualPath = actualPath.substring(ingressPrefix.length) || '/';
-    // Update parsedUrl to use the actual path
+  
+  // Handle different ingress formats
+  const ingressPrefixes = [
+    '/api/hassio_ingress/ha-mcp-bridge-v2',  // Old format
+    '/15715349_ha-mcp-bridge-v2/ingress',    // Your actual format
+  ];
+  
+  for (const prefix of ingressPrefixes) {
+    if (actualPath.startsWith(prefix)) {
+      actualPath = actualPath.substring(prefix.length) || '/';
+      parsedUrl.pathname = actualPath;
+      console.log(`🔀 Ingress request: ${req.url} -> ${actualPath}`);
+      break;
+    }
+  }
+  
+  // Also handle if the entire path IS the ingress path
+  if (actualPath === '/15715349_ha-mcp-bridge-v2/ingress' || actualPath === '/15715349_ha-mcp-bridge-v2/ingress/') {
+    actualPath = '/';
     parsedUrl.pathname = actualPath;
-    console.log(`🔀 Ingress request: ${req.url} -> ${actualPath}`);
+    console.log(`🔀 Ingress root: ${req.url} -> ${actualPath}`);
   }
   
   // Root path handler for ingress health checks  
