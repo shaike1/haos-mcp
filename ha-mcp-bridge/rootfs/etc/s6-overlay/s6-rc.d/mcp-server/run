@@ -173,4 +173,4 @@ cd /app
 # Start the MCP server
 bashio::log.info ""
 bashio::log.info "🚀 Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
-exec node /usr/bin/simple-mcp-server.js
+exec node /usr/bin/ha-mcp-server.js
