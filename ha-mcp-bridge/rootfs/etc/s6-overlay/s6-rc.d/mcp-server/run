@@ -83,17 +83,23 @@ elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
     bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
 fi
 
-# Use Custom Integration API endpoint approach
-bashio::log.info "🔗 Using Custom Integration API endpoint approach..."
+# Use simple ingress approach with minimal server
+bashio::log.info "🔗 Using simplified ingress approach..."
 
-# The custom integration will expose these endpoints through HA's API
-CLAUDE_URL="${NABU_CASA_URL}/api/mcp_bridge"
-bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
-bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
-bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
-bashio::log.info ""
-bashio::log.info "📝 This URL will work through the Custom Integration"
-bashio::log.info "📝 Make sure you have the MCP Bridge Integration installed"
+# Get the ingress URL from HA
+ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
+INGRESS_PATH=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
+
+if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
+    CLAUDE_URL="${NABU_CASA_URL}${INGRESS_PATH}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+else
+    bashio::log.info "⚠️ Could not detect ingress URL automatically"
+    bashio::log.info "📝 Click 'OPEN WEB UI' to get the correct URL"
+    CLAUDE_URL="Use_OPEN_WEB_UI_button"
+fi
 
 # Method 2: Try to detect Home Assistant network info
 if [[ -z "${CLAUDE_URL}" ]]; then
@@ -167,4 +173,4 @@ cd /app
 # Start the MCP server
 bashio::log.info ""
 bashio::log.info "🚀 Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
-exec node server.js
+exec node /usr/bin/simple-mcp-server.js
