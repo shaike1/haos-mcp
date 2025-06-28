@@ -177,4 +177,4 @@ bashio::log.info ""
 bashio::log.info "📡 MCP SSE Endpoint: ${CLAUDE_URL}/mcp_server/sse"
 bashio::log.info "🌐 Web Interface: ${CLAUDE_URL}"
 bashio::log.info ""
-exec node /usr/bin/minimal-mcp.js
+exec node /usr/bin/final-mcp-server.js
