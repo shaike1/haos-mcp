@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.1.2 (Web Interface + Ingress Detection)"
+bashio::log.info "Version: 2.2.0 (API Proxy Solution)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -83,25 +83,17 @@ elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
     bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
 fi
 
-# Try to detect the actual ingress URL from Home Assistant
-bashio::log.info "🔍 Attempting to discover ingress URL..."
+# Use Custom Integration API endpoint approach
+bashio::log.info "🔗 Using Custom Integration API endpoint approach..."
 
-# Get addon info to find ingress URL
-ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
-INGRESS_URL=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
-
-if [[ -n "${INGRESS_URL}" && "${INGRESS_URL}" != "null" && "${INGRESS_URL}" != "empty" ]]; then
-    FULL_INGRESS_URL="${NABU_CASA_URL}${INGRESS_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL FOUND: ${FULL_INGRESS_URL}"
-    CLAUDE_URL="${FULL_INGRESS_URL}"
-else
-    bashio::log.info "⚠️ Could not auto-detect ingress URL"
-    bashio::log.info "📝 Manual method: Go to HA Settings → Add-ons → HA MCP Bridge → OPEN WEB UI"
-    bashio::log.info "📝 Copy the URL from your browser address bar"
-    CLAUDE_URL="${NABU_CASA_URL}/api/hassio_ingress/MANUAL_TOKEN_NEEDED"
-fi
+# The custom integration will expose these endpoints through HA's API
+CLAUDE_URL="${NABU_CASA_URL}/api/mcp_bridge"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+bashio::log.info ""
+bashio::log.info "📝 This URL will work through the Custom Integration"
+bashio::log.info "📝 Make sure you have the MCP Bridge Integration installed"
 
 # Method 2: Try to detect Home Assistant network info
 if [[ -z "${CLAUDE_URL}" ]]; then

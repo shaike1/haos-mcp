@@ -1,0 +1,57 @@
+{
+  "name": "Home Assistant MCP Bridge (API)",
+  "description": "Connect Claude.ai to your Home Assistant via Custom Integration API proxy",
+  "server": {
+    "url": "https://ha.right-api.com/api/mcp_bridge",
+    "auth": {
+      "type": "oauth2",
+      "authorization_endpoint": "https://ha.right-api.com/api/mcp_bridge/oauth/authorize",
+      "token_endpoint": "https://ha.right-api.com/api/mcp_bridge/oauth/token",
+      "client_id": "claude-ai-client",
+      "scopes": ["mcp"]
+    }
+  },
+  "tools": [
+    {
+      "name": "get_lights",
+      "description": "Get all light entities and their current states"
+    },
+    {
+      "name": "control_light",
+      "description": "Turn lights on/off or adjust brightness/color"
+    },
+    {
+      "name": "get_sensors", 
+      "description": "Get sensor data (temperature, humidity, motion, etc.)"
+    },
+    {
+      "name": "get_switches",
+      "description": "Get all switch entities and their states"
+    },
+    {
+      "name": "control_switch",
+      "description": "Turn switches on or off"
+    },
+    {
+      "name": "get_climate",
+      "description": "Get climate/thermostat information"
+    },
+    {
+      "name": "set_climate",
+      "description": "Control temperature and HVAC settings"
+    },
+    {
+      "name": "run_automation",
+      "description": "Trigger Home Assistant automations"
+    },
+    {
+      "name": "get_areas",
+      "description": "Get all areas/rooms in your home"
+    },
+    {
+      "name": "get_devices",
+      "description": "Get all devices in Home Assistant"
+    }
+  ],
+  "version": "2.1.5"
+}
