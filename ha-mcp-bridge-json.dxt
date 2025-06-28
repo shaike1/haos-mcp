@@ -1,0 +1,34 @@
+{
+  "name": "Home Assistant MCP Bridge (JSON)",
+  "description": "JSON MCP server for Claude.ai - proper protocol implementation",
+  "server": {
+    "url": "https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress",
+    "transport": "http",
+    "auth": {
+      "type": "none"
+    }
+  },
+  "tools": [
+    {
+      "name": "get_lights",
+      "description": "Get all light entities and their current states"
+    },
+    {
+      "name": "control_light",
+      "description": "Turn lights on/off or adjust brightness/color"
+    },
+    {
+      "name": "get_sensors", 
+      "description": "Get sensor data (temperature, humidity, motion, etc.)"
+    },
+    {
+      "name": "get_climate",
+      "description": "Get climate/thermostat information"
+    },
+    {
+      "name": "control_switch",
+      "description": "Turn switches on or off"
+    }
+  ],
+  "version": "2.3.1"
+}

@@ -172,9 +172,10 @@ cd /app
 
 # Start the MCP server
 bashio::log.info ""
-bashio::log.info "🚀 Starting Official HA MCP Server..."
+bashio::log.info "🚀 Starting JSON MCP Server for Claude.ai..."
 bashio::log.info ""
-bashio::log.info "📡 MCP SSE Endpoint: ${CLAUDE_URL}/mcp_server/sse"
-bashio::log.info "🌐 Web Interface: ${CLAUDE_URL}"
+bashio::log.info "🔗 MCP Server URL: ${CLAUDE_URL}"
+bashio::log.info "📡 Protocol: MCP JSON-RPC 2.0"
+bashio::log.info "🎯 Ready for Claude.ai connections"
 bashio::log.info ""
-exec node /usr/bin/final-mcp-server.js
+exec node /usr/bin/json-mcp-server.js
