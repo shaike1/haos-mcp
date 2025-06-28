@@ -90,8 +90,8 @@ bashio::log.info "🔗 Using simplified ingress approach..."
 ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
 INGRESS_PATH=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
 
-# Force the correct URL since we know what it is
-CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
+# Use the real ingress format from the logs
+CLAUDE_URL="https://ha.right-api.com/api/hassio_ingress/mwncuB6MXurVt0_WywYIAFP1y_IBS7YpFFpUKpyRM-I"
 bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
 bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
 bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
