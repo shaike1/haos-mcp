@@ -1115,30 +1115,19 @@ const httpServer = http.createServer(async (req, res) => {
   
   const parsedUrl = url.parse(req.url, true);
   
-  // Handle ingress paths by stripping the ingress prefix
+  // Log all incoming requests for debugging
+  console.log(`📥 Request: ${req.method} ${req.url}`);
+  console.log(`📥 Headers:`, Object.keys(req.headers).filter(h => h.includes('ingress') || h.includes('host')).reduce((obj, key) => {
+    obj[key] = req.headers[key];
+    return obj;
+  }, {}));
+  
+  // Handle ingress paths - for HA ingress, we might not need to strip anything
   let actualPath = parsedUrl.pathname;
   
-  // Handle different ingress formats
-  const ingressPrefixes = [
-    '/api/hassio_ingress/ha-mcp-bridge-v2',  // Old format
-    '/15715349_ha-mcp-bridge-v2/ingress',    // Your actual format
-  ];
-  
-  for (const prefix of ingressPrefixes) {
-    if (actualPath.startsWith(prefix)) {
-      actualPath = actualPath.substring(prefix.length) || '/';
-      parsedUrl.pathname = actualPath;
-      console.log(`🔀 Ingress request: ${req.url} -> ${actualPath}`);
-      break;
-    }
-  }
-  
-  // Also handle if the entire path IS the ingress path
-  if (actualPath === '/15715349_ha-mcp-bridge-v2/ingress' || actualPath === '/15715349_ha-mcp-bridge-v2/ingress/') {
-    actualPath = '/';
-    parsedUrl.pathname = actualPath;
-    console.log(`🔀 Ingress root: ${req.url} -> ${actualPath}`);
-  }
+  // For Home Assistant ingress, the server should handle ALL paths as-is
+  // The ingress proxy forwards requests directly to the container
+  console.log(`📍 Handling path: ${actualPath}`);
   
   // Root path handler for ingress health checks  
   if (req.method === 'GET' && parsedUrl.pathname === '/') {
