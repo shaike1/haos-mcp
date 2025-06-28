@@ -1,10 +1,11 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Force complete rebuild - v2.2.0 API Proxy Solution
-RUN echo "MAJOR-UPDATE-$(date +%s)" > /cache-break.txt
-RUN echo "Build: v2.2.0 API Proxy Solution" > /build-info.txt
+# Force complete rebuild - v2.3.5 JSON MCP Solution  
+RUN echo "FORCE-REBUILD-$(date +%s)-$(uuidgen)" > /cache-break.txt
+RUN echo "Build: v2.3.5 JSON MCP Solution" > /build-info.txt
 RUN echo "Container cache break: $(uuidgen)" > /force-update.txt
+RUN echo "Timestamp: $(date)" > /build-timestamp.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \

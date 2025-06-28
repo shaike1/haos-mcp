@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.2.0 (API Proxy Solution)"
+bashio::log.info "Version: 2.3.5 (JSON MCP Solution)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
