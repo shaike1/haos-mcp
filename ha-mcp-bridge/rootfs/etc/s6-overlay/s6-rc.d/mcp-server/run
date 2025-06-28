@@ -90,15 +90,17 @@ bashio::log.info "🔗 Using simplified ingress approach..."
 ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
 INGRESS_PATH=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
 
+# Force the correct URL since we know what it is
+CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+
+# Try to auto-detect for future reference
 if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
-    CLAUDE_URL="${NABU_CASA_URL}${INGRESS_PATH}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL: ${CLAUDE_URL}"
+    bashio::log.info "📝 Auto-detected would be: ${NABU_CASA_URL}${INGRESS_PATH}"
 else
-    bashio::log.info "⚠️ Could not detect ingress URL automatically"
-    bashio::log.info "📝 Click 'OPEN WEB UI' to get the correct URL"
-    CLAUDE_URL="Use_OPEN_WEB_UI_button"
+    bashio::log.info "📝 Auto-detection failed, using hardcoded URL"
 fi
 
 # Method 2: Try to detect Home Assistant network info
