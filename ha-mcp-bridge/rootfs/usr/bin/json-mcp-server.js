@@ -8,10 +8,12 @@ console.log('🚀 Starting JSON MCP Server for Claude.ai...');
 const server = http.createServer((req, res) => {
   console.log(`📥 ${req.method} ${req.url}`);
   
-  // Enable CORS for Claude.ai
+  // Enable CORS for Claude.ai web interface
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
   
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
