@@ -7,6 +7,9 @@ console.log('🚀 Starting JSON MCP Server for Claude.ai...');
 
 const server = http.createServer((req, res) => {
   console.log(`📥 ${req.method} ${req.url}`);
+  console.log(`📥 Headers:`, JSON.stringify(req.headers, null, 2));
+  console.log(`📥 Origin:`, req.headers.origin);
+  console.log(`📥 User-Agent:`, req.headers['user-agent']);
   
   // Enable CORS for Claude.ai web interface
   res.setHeader('Access-Control-Allow-Origin', '*');
