@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.3.5 (JSON MCP Solution)"
+bashio::log.info "Version: 2.3.8 (Dynamic Token Detection)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -94,8 +94,6 @@ INGRESS_PATH=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/
 if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
     CLAUDE_URL="${NABU_CASA_URL}${INGRESS_PATH}"
     bashio::log.info "✅ 🎯 CLAUDE.AI URL (Auto-detected): ${CLAUDE_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL (Auto-detected): ${CLAUDE_URL}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL (Auto-detected): ${CLAUDE_URL}"
 else
     # Fallback: Use the original working URL format
     CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
@@ -104,8 +102,17 @@ else
     bashio::log.info "📝 Click 'OPEN WEB UI' to get the current URL with fresh token"
 fi
 
+# Extract token from ingress path for HA API format
+CURRENT_TOKEN=""
+if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
+    CURRENT_TOKEN=$(echo "${INGRESS_PATH}" | sed 's/.*\/\([^/]*\)$/\1/')
+    HA_API_URL="${NABU_CASA_URL}/api/hassio_ingress/${CURRENT_TOKEN}"
+    bashio::log.info "✅ 🎯 CLAUDE.AI INGRESS API URL: ${HA_API_URL}"
+fi
+
 # Also show debug info
 bashio::log.info "📝 Raw ingress path from API: ${INGRESS_PATH}"
+bashio::log.info "📝 Current ingress token: ${CURRENT_TOKEN}"
 bashio::log.info "📝 The ingress token changes dynamically"
 
 # Method 2: Try to detect Home Assistant network info
@@ -156,6 +163,9 @@ bashio::log.info "🎯 =================================="
 bashio::log.info ""
 bashio::log.info "📋 Step 1: Copy this URL for Claude.ai:"
 bashio::log.info "🔗 ${CLAUDE_URL}"
+if [[ -n "${HA_API_URL}" ]]; then
+    bashio::log.info "🔗 Alternative API URL: ${HA_API_URL}"
+fi
 bashio::log.info ""
 bashio::log.info "📋 Step 2: Login credentials when prompted:"
 bashio::log.info "👤 Username: admin"
