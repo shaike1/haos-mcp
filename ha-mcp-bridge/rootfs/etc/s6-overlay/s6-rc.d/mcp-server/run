@@ -1,27 +1,18 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start MCP Server service with CLEAR URL and CREDENTIAL DISPLAY
+# Start MCP Server service - SIMPLIFIED VERSION
 # ==============================================================================
 
-# Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.4.0 (Authentication Bypass)"
+bashio::log.info "Version: 2.4.2 (Simplified)"
 
 # Load configuration
-CONFIG_PATH=/data/options.json
-bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
-
-# Get basic configuration
-EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
-LOG_LEVEL="$(bashio::config 'log_level')"
-CONFIGURED_NABU_URL="$(bashio::config 'nabu_casa_url')"
-
-bashio::log.info "External access method: ${EXTERNAL_METHOD}"
+NABU_CASA_URL="$(bashio::config 'nabu_casa_url')"
 
 # Use fixed port 3003 as defined in config.yaml
 export PORT="3003"
-export LOG_LEVEL="${LOG_LEVEL}"
+export LOG_LEVEL="info"
 
 # Basic OAuth configuration
 export OAUTH_ENABLED="true"
@@ -31,164 +22,30 @@ export ADMIN_PASSWORD="${ADMIN_PASSWORD}"
 # Home Assistant integration using supervisor token
 export HA_URL="http://supervisor/core"
 export HA_TOKEN="${SUPERVISOR_TOKEN}"
-bashio::log.info "Using supervisor token for HA API access"
 
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# ============================================================================
-# SMART URL DETECTION FOR CLAUDE.AI
-# ============================================================================
-
-bashio::log.info ""
-bashio::log.info "🔍 Detecting your Claude.ai connection URL..."
-
-# Try multiple methods to find the correct external URL
-CLAUDE_URL=""
-
-# Method 1: Nabu Casa Cloud Detection (Enhanced)
-bashio::log.info "🔍 Detecting Nabu Casa Cloud configuration..."
-
-# First check if cloud integration is available
-CLOUD_STATUS=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
-bashio::log.info "Cloud API response: ${CLOUD_STATUS}"
-
-# Try multiple Nabu Casa detection methods
-NABU_CASA_URL=""
-
-# Method 1a: Direct cloud info API
-NABU_URL_1=$(echo "${CLOUD_STATUS}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
-bashio::log.info "Method 1a - instance_url: ${NABU_URL_1}"
-
-# Method 1b: Check cloud addon status  
-CLOUD_ADDON=$(bashio::api.supervisor "GET" "/addons/core_cloud" 2>/dev/null || echo '{}')
-CLOUD_ADDON_STATE=$(echo "${CLOUD_ADDON}" | jq -r '.data.state // empty' 2>/dev/null || echo "")
-bashio::log.info "Cloud addon state: ${CLOUD_ADDON_STATE}"
-
-# Method 1c: Check supervisor info for external URL
-SUPERVISOR_INFO=$(bashio::api.supervisor "GET" "/supervisor/info" 2>/dev/null || echo '{}')
-EXTERNAL_URL=$(echo "${SUPERVISOR_INFO}" | jq -r '.data.addons_repositories[] | select(contains("nabu-casa")) // empty' 2>/dev/null || echo "")
-bashio::log.info "Supervisor external references: ${EXTERNAL_URL}"
-
-# Try to get the Nabu Casa URL
-if [[ -n "${CONFIGURED_NABU_URL}" && "${CONFIGURED_NABU_URL}" != "null" ]]; then
-    NABU_CASA_URL="${CONFIGURED_NABU_URL}"
-    bashio::log.info "✅ Using configured Nabu Casa URL: ${NABU_CASA_URL}"
-elif [[ -n "${NABU_URL_1}" && "${NABU_URL_1}" != "null" && "${NABU_URL_1}" != "empty" ]]; then
-    NABU_CASA_URL="${NABU_URL_1}"
-    bashio::log.info "✅ Found Nabu Casa URL via cloud info: ${NABU_CASA_URL}"
-elif [[ "${CLOUD_ADDON_STATE}" == "started" ]]; then
-    # If cloud addon is running, try to construct URL from known patterns
-    NABU_CASA_URL="https://ha.right-api.com"  # Fallback URL
-    bashio::log.info "⚠️ Using fallback Nabu Casa URL: ${NABU_CASA_URL}"
-fi
-
-# Use simple ingress approach with minimal server
-bashio::log.info "🔗 Using simplified ingress approach..."
-
-# Get the ingress URL from HA
-ADDON_INFO=$(bashio::api.supervisor "GET" "/addons/self/info" 2>/dev/null || echo '{}')
-INGRESS_PATH=$(echo "${ADDON_INFO}" | jq -r '.data.ingress_url // empty' 2>/dev/null || echo "")
-
-# Try to get the current ingress token dynamically
-if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
-    CLAUDE_URL="${NABU_CASA_URL}${INGRESS_PATH}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL (Auto-detected): ${CLAUDE_URL}"
-else
-    # Fallback: Use the original working URL format
-    CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
-    bashio::log.info "⚠️ Could not auto-detect ingress token"
-    bashio::log.info "✅ 🎯 CLAUDE.AI URL (Fallback): ${CLAUDE_URL}"
-    bashio::log.info "📝 Click 'OPEN WEB UI' to get the current URL with fresh token"
-fi
-
-# Extract token from ingress path for HA API format
-CURRENT_TOKEN=""
-if [[ -n "${INGRESS_PATH}" && "${INGRESS_PATH}" != "null" && "${INGRESS_PATH}" != "empty" ]]; then
-    CURRENT_TOKEN=$(echo "${INGRESS_PATH}" | sed 's/.*\/\([^/]*\)$/\1/')
-    HA_API_URL="${NABU_CASA_URL}/api/hassio_ingress/${CURRENT_TOKEN}"
-    bashio::log.info "✅ 🎯 CLAUDE.AI INGRESS API URL: ${HA_API_URL}"
-fi
-
-# Also show debug info
-bashio::log.info "📝 Raw ingress path from API: ${INGRESS_PATH}"
-bashio::log.info "📝 Current ingress token: ${CURRENT_TOKEN}"
-bashio::log.info "📝 The ingress token changes dynamically"
-
-# Method 2: Try to detect Home Assistant network info
-if [[ -z "${CLAUDE_URL}" ]]; then
-    bashio::log.info "Checking local network..."
-    HA_NETWORK=$(bashio::api.supervisor "GET" "/network/info" 2>/dev/null || echo '{}')
-    HA_IP=$(echo "${HA_NETWORK}" | jq -r '.data.interfaces[] | select(.primary == true) | .ipv4.address[0]' 2>/dev/null || echo "")
-    
-    if [[ -n "${HA_IP}" ]]; then
-        CLAUDE_URL="http://${HA_IP}:8123/api/hassio_ingress/ha-mcp-bridge-v2"
-        bashio::log.info "🏠 Found local network IP: ${HA_IP}"
-    fi
-fi
-
-# Method 3: Fallback to detected container IP
-if [[ -z "${CLAUDE_URL}" ]]; then
-    CONTAINER_IP=$(hostname -i | awk '{print $1}' 2>/dev/null || echo "")
-    if [[ -n "${CONTAINER_IP}" ]]; then
-        CLAUDE_URL="http://${CONTAINER_IP}:8123/api/hassio_ingress/ha-mcp-bridge-v2"
-        bashio::log.info "🌐 Using container IP: ${CONTAINER_IP}"
-    fi
-fi
-
-# Final fallback
-if [[ -z "${CLAUDE_URL}" ]]; then
-    CLAUDE_URL="http://YOUR_HA_IP:8123/api/hassio_ingress/ha-mcp-bridge-v2"
-    bashio::log.warning "⚠️ Could not auto-detect URL - manual setup needed"
-fi
-
-# Set server URL for internal use
-export SERVER_URL="${CLAUDE_URL}"
-export OAUTH_REDIRECT_URI="${SERVER_URL}/oauth/callback"
-export INGRESS_URL="/api/hassio/app/ha-mcp-bridge-v2"
-
-# Timeout settings
-export REQUEST_TIMEOUT="60000"
-export KEEPALIVE_TIMEOUT="65000"
-export SSE_PING_INTERVAL="8000"
-
-# ============================================================================
-# DISPLAY CLEAR SETUP INSTRUCTIONS
-# ============================================================================
+# Simple URL display
+CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
 
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info "🎯    CLAUDE.AI SETUP INSTRUCTIONS"
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
-bashio::log.info "📋 Step 1: Copy this URL for Claude.ai:"
-bashio::log.info "🔗 RECOMMENDED: ${CLAUDE_URL}"
-if [[ -n "${HA_API_URL:-}" ]]; then
-    bashio::log.info "🔗 Alternative API URL: ${HA_API_URL}"
-fi
+bashio::log.info "📋 Copy this URL for Claude.ai:"
+bashio::log.info "🔗 ${CLAUDE_URL}"
 bashio::log.info ""
-bashio::log.info "📋 Step 2: No authentication required!"
-bashio::log.info "✅ Claude.ai can connect directly to the MCP server"
-bashio::log.info "🔓 Authentication is bypassed for MCP requests"
+bashio::log.info "📋 No authentication required!"
+bashio::log.info "✅ Claude.ai can connect directly"
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
-
-# Log technical details
-bashio::log.info "Technical details:"
-bashio::log.info "Server URL: ${SERVER_URL}"
-bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
-bashio::log.info "Port: ${PORT}"
 
 # Change to application directory
 cd /app
 
 # Start the MCP server
-bashio::log.info ""
-bashio::log.info "🚀 Starting JSON MCP Server for Claude.ai..."
-bashio::log.info ""
-bashio::log.info "🔗 MCP Server URL: ${CLAUDE_URL}"
-bashio::log.info "📡 Protocol: MCP JSON-RPC 2.0"
-bashio::log.info "🎯 Ready for Claude.ai connections"
-bashio::log.info ""
+bashio::log.info "🚀 Starting JSON MCP Server..."
 exec node /usr/bin/json-mcp-server.js
