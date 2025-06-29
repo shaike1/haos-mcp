@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 3.1.0 (SSE MCP Compatible)"
+bashio::log.info "Version: 3.2.0 (Universal MCP)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
@@ -48,7 +48,7 @@ bashio::log.info ""
 cd /app
 
 # Start the HA API Proxy (bypassing ingress)
-bashio::log.info "🚀 Starting SSE MCP server..."
-bashio::log.info "🌊 SSE transport like official HA MCP integration"
-bashio::log.info "🎯 Endpoint: /mcp_server/sse for Claude.ai"
-exec node /usr/bin/sse-mcp-server.js
+bashio::log.info "🚀 Starting UNIVERSAL MCP server..."
+bashio::log.info "🔥 Auto-detects SSE vs JSON based on client"
+bashio::log.info "🎯 Serves MCP content on ALL paths"
+exec node /usr/bin/universal-mcp.js

@@ -38,7 +38,8 @@ const server = http.createServer((req, res) => {
   }
   
   // MCP Server SSE endpoint (like official HA integration)
-  if (path === '/mcp_server/sse' || path === '/mcp_server/sse/') {
+  // Handle ANY path - universal MCP server
+  if (path.includes('/mcp_server/sse') || path === '/mcp_server/sse' || path === '/mcp_server/sse/' || req.method === 'GET') {
     console.log('🌊 SSE MCP endpoint accessed');
     
     // Set SSE headers
