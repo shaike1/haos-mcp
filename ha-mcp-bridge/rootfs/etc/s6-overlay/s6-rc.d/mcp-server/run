@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.4.3 (Ingress Fixed)"
+bashio::log.info "Version: 2.4.4 (Ingress Test)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
@@ -46,6 +46,7 @@ bashio::log.info ""
 # Change to application directory
 cd /app
 
-# Start the MCP server
-bashio::log.info "🚀 Starting JSON MCP Server..."
-exec node /usr/bin/json-mcp-server.js
+# Start the TEST server first to verify addon is running
+bashio::log.info "🧪 Starting TEST server to verify addon..."
+bashio::log.info "🧪 This will help diagnose if ingress routing works"
+exec node /usr/bin/test-server.js
