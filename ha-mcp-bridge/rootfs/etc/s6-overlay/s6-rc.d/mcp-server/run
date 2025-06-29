@@ -26,8 +26,8 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# Direct API Proxy URL (bypasses ingress)
-CLAUDE_URL="https://ha.right-api.com:3003"
+# API Proxy via Ingress (Nabu Casa compatible)
+CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
 
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
@@ -37,9 +37,9 @@ bashio::log.info ""
 bashio::log.info "📋 Copy this URL for Claude.ai:"
 bashio::log.info "🔗 ${CLAUDE_URL}"
 bashio::log.info ""
-bashio::log.info "📋 Direct API access - no ingress needed!"
-bashio::log.info "✅ Bypasses ingress routing issues"
-bashio::log.info "🔧 Uses HA API directly via supervisor token"
+bashio::log.info "📋 HA API Proxy via Nabu Casa ingress"
+bashio::log.info "✅ Real HA API integration with supervisor token"
+bashio::log.info "🔧 No authentication barriers for Claude.ai"
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
@@ -49,6 +49,6 @@ cd /app
 
 # Start the HA API Proxy (bypassing ingress)
 bashio::log.info "🚀 Starting HA API Proxy server..."
-bashio::log.info "🔄 Bypassing ingress - using direct API calls"
-bashio::log.info "🎯 Direct access via port 3003"
+bashio::log.info "🔄 Using HA API with supervisor token"
+bashio::log.info "🎯 Serving via Nabu Casa ingress"
 exec node /usr/bin/ha-api-proxy.js

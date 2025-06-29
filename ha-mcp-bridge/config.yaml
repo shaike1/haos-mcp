@@ -1,7 +1,7 @@
 name: "HA MCP Bridge Hybrid v2"
-version: "3.0.0"
+version: "3.0.1"
 slug: "ha-mcp-bridge-v2" 
-description: "HA API Proxy for Claude.ai MCP - Direct API access bypassing ingress"
+description: "HA API Proxy for Claude.ai MCP via Nabu Casa ingress"
 url: "https://github.com/shaike1/haos-mcp/tree/main/ha-mcp-bridge"
 icon: "mdi:bridge"
 arch:
