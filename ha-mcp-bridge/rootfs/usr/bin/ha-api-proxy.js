@@ -5,6 +5,8 @@ const https = require('https');
 const url = require('url');
 
 console.log('🚀 Starting HA API Proxy for Claude.ai MCP...');
+console.log('🆔 ADDON IDENTITY: HA-API-PROXY-v3.0.1');
+console.log('🕐 STARTUP TIME:', new Date().toISOString());
 
 // Home Assistant API configuration
 const HA_URL = process.env.HA_URL || 'http://supervisor/core';
