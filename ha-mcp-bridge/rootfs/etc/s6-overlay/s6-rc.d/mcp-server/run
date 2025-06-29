@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 3.0.3 (Minimal MCP)"
+bashio::log.info "Version: 3.1.0 (SSE MCP Compatible)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
@@ -26,8 +26,8 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# API Proxy via Ingress (Nabu Casa compatible)
-CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
+# SSE MCP via Ingress (like official HA integration)
+CLAUDE_URL="https://ha.right-api.com/hassio/ingress/15715349_ha-mcp-bridge-v2/mcp_server/sse"
 
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
@@ -37,9 +37,9 @@ bashio::log.info ""
 bashio::log.info "📋 Copy this URL for Claude.ai:"
 bashio::log.info "🔗 ${CLAUDE_URL}"
 bashio::log.info ""
-bashio::log.info "📋 HA API Proxy via Nabu Casa ingress"
-bashio::log.info "✅ Real HA API integration with supervisor token"
-bashio::log.info "🔧 No authentication barriers for Claude.ai"
+bashio::log.info "📋 SSE MCP Server - official HA integration compatible"
+bashio::log.info "🌊 Server-Sent Events transport for Claude.ai remote MCP"
+bashio::log.info "🔧 Endpoint: /mcp_server/sse"
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
@@ -48,7 +48,7 @@ bashio::log.info ""
 cd /app
 
 # Start the HA API Proxy (bypassing ingress)
-bashio::log.info "🚀 Starting MINIMAL MCP server..."
-bashio::log.info "🔄 Universal path handler - responds to ANY request"
-bashio::log.info "🎯 Will serve MCP JSON on all paths via ingress"
-exec node /usr/bin/minimal-mcp.js
+bashio::log.info "🚀 Starting SSE MCP server..."
+bashio::log.info "🌊 SSE transport like official HA MCP integration"
+bashio::log.info "🎯 Endpoint: /mcp_server/sse for Claude.ai"
+exec node /usr/bin/sse-mcp-server.js

@@ -1,12 +1,13 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Force complete rebuild - v2.4.3 Ingress Fixed  
+# Force complete rebuild - v3.1.0 SSE MCP Server  
 RUN echo "FORCE-REBUILD-$(date +%s)-$(uuidgen)" > /cache-break.txt
-RUN echo "Build: v2.4.3 Ingress Fixed" > /build-info.txt
+RUN echo "Build: v3.1.0 SSE MCP Server" > /build-info.txt
 RUN echo "Container cache break: $(uuidgen)" > /force-update.txt
 RUN echo "Timestamp: $(date)" > /build-timestamp.txt
-RUN echo "Cache-buster-243: $(date +%s%N)" > /version-243.txt
+RUN echo "Cache-buster-310: $(date +%s%N)" > /version-310.txt
+RUN echo "SSE-MCP-REBUILD: $(uuidgen)" > /sse-rebuild.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \
