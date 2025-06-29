@@ -26,8 +26,8 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# SSE MCP via Ingress (like official HA integration)
-CLAUDE_URL="https://ha.right-api.com/hassio/ingress/15715349_ha-mcp-bridge-v2/mcp_server/sse"
+# Working ingress URL (confirmed in logs)
+CLAUDE_URL="https://ha.right-api.com/hassio/ingress/15715349_ha-mcp-bridge-v2"
 
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
