@@ -5,7 +5,7 @@
 
 # Wait for supervisor to be ready
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.3.8 (Dynamic Token Detection)"
+bashio::log.info "Version: 2.4.0 (Authentication Bypass)"
 
 # Load configuration
 CONFIG_PATH=/data/options.json
@@ -162,18 +162,14 @@ bashio::log.info "🎯    CLAUDE.AI SETUP INSTRUCTIONS"
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
 bashio::log.info "📋 Step 1: Copy this URL for Claude.ai:"
-bashio::log.info "🔗 ${CLAUDE_URL}"
+bashio::log.info "🔗 RECOMMENDED: ${CLAUDE_URL}"
 if [[ -n "${HA_API_URL}" ]]; then
     bashio::log.info "🔗 Alternative API URL: ${HA_API_URL}"
 fi
 bashio::log.info ""
-bashio::log.info "📋 Step 2: Login credentials when prompted:"
-bashio::log.info "👤 Username: admin"
-bashio::log.info "🔑 Password: ${ADMIN_PASSWORD}"
-bashio::log.info ""
-bashio::log.info "📋 Step 3: You'll also need a Home Assistant token:"
-bashio::log.info "🏠 Go to: Settings → Security → Long-lived access tokens"
-bashio::log.info "➕ Create new token → Copy and paste when prompted"
+bashio::log.info "📋 Step 2: No authentication required!"
+bashio::log.info "✅ Claude.ai can connect directly to the MCP server"
+bashio::log.info "🔓 Authentication is bypassed for MCP requests"
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info ""

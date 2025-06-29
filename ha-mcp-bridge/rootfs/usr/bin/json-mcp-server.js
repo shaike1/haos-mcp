@@ -5,18 +5,35 @@ const url = require('url');
 
 console.log('🚀 Starting JSON MCP Server for Claude.ai...');
 
+// Bypass authentication for Claude.ai remote MCP
+const isMCPRequest = (req) => {
+  const userAgent = req.headers['user-agent'] || '';
+  const origin = req.headers.origin || '';
+  
+  // Check if request is from Claude.ai or MCP client
+  return userAgent.includes('claude') || 
+         origin.includes('claude.ai') || 
+         req.headers['x-mcp-client'] ||
+         req.url.includes('/mcp') ||
+         req.headers.accept === 'application/json';
+};
+
 const server = http.createServer((req, res) => {
   console.log(`📥 ${req.method} ${req.url}`);
   console.log(`📥 Headers:`, JSON.stringify(req.headers, null, 2));
   console.log(`📥 Origin:`, req.headers.origin);
   console.log(`📥 User-Agent:`, req.headers['user-agent']);
+  console.log(`📥 Is MCP Request:`, isMCPRequest(req));
   
   // Enable CORS for Claude.ai web interface
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-MCP-Client');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
+  
+  // Always respond with MCP JSON for any request (bypassing authentication)
+  console.log(`🔓 Serving MCP response without authentication`);
   
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -41,7 +58,7 @@ const server = http.createServer((req, res) => {
         },
         serverInfo: {
           name: "HA MCP Bridge",
-          version: "2.3.1"
+          version: "2.3.9"
         }
       }
     }));
@@ -175,7 +192,7 @@ const server = http.createServer((req, res) => {
     result: {
       status: "ready",
       server: "HA MCP Bridge",
-      version: "2.3.1",
+      version: "2.3.9",
       endpoints: ["/", "/tools/list", "/tools/call"]
     }
   }));
