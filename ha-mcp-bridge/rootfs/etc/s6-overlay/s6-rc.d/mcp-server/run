@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 3.0.0 (API Proxy)"
+bashio::log.info "Version: 3.0.3 (Minimal MCP)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
@@ -48,7 +48,7 @@ bashio::log.info ""
 cd /app
 
 # Start the HA API Proxy (bypassing ingress)
-bashio::log.info "🚀 Starting HA API Proxy server..."
-bashio::log.info "🔄 Using HA API with supervisor token"
-bashio::log.info "🎯 Serving via Nabu Casa ingress"
-exec node /usr/bin/ha-api-proxy.js
+bashio::log.info "🚀 Starting MINIMAL MCP server..."
+bashio::log.info "🔄 Universal path handler - responds to ANY request"
+bashio::log.info "🎯 Will serve MCP JSON on all paths via ingress"
+exec node /usr/bin/minimal-mcp.js
