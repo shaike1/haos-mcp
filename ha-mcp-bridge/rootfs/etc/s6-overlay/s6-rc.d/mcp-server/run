@@ -163,7 +163,7 @@ bashio::log.info "🎯 =================================="
 bashio::log.info ""
 bashio::log.info "📋 Step 1: Copy this URL for Claude.ai:"
 bashio::log.info "🔗 RECOMMENDED: ${CLAUDE_URL}"
-if [[ -n "${HA_API_URL}" ]]; then
+if [[ -n "${HA_API_URL:-}" ]]; then
     bashio::log.info "🔗 Alternative API URL: ${HA_API_URL}"
 fi
 bashio::log.info ""
