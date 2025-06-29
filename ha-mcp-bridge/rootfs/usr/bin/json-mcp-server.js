@@ -21,19 +21,17 @@ const isMCPRequest = (req) => {
 const server = http.createServer((req, res) => {
   console.log(`📥 ${req.method} ${req.url}`);
   console.log(`📥 Headers:`, JSON.stringify(req.headers, null, 2));
-  console.log(`📥 Origin:`, req.headers.origin);
-  console.log(`📥 User-Agent:`, req.headers['user-agent']);
-  console.log(`📥 Is MCP Request:`, isMCPRequest(req));
+  console.log(`📥 X-Ingress-Path:`, req.headers['x-ingress-path']);
+  console.log(`📥 Host:`, req.headers.host);
   
-  // Enable CORS for Claude.ai web interface
+  // Enable CORS for Claude.ai web interface  
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-MCP-Client');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Max-Age', '86400');
   
-  // Always respond with MCP JSON for any request (bypassing authentication)
-  console.log(`🔓 Serving MCP response without authentication`);
+  console.log(`🔓 Serving MCP response for ingress`);
   
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -44,8 +42,8 @@ const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const path = parsedUrl.pathname;
   
-  // MCP Server Info - JSON response
-  if (req.method === 'GET' && (path === '/' || path === '')) {
+  // Handle ingress paths - serve MCP on any GET request
+  if (req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       jsonrpc: "2.0",
@@ -58,7 +56,7 @@ const server = http.createServer((req, res) => {
         },
         serverInfo: {
           name: "HA MCP Bridge",
-          version: "2.3.9"
+          version: "2.4.3"
         }
       }
     }));
@@ -199,8 +197,10 @@ const server = http.createServer((req, res) => {
 });
 
 const PORT = process.env.PORT || 3003;
+// Listen on all interfaces for ingress compatibility
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ JSON MCP Server running on port ${PORT}`);
   console.log(`🔗 MCP Protocol: 2024-11-05`);
   console.log(`📡 Ready for Claude.ai JSON requests`);
+  console.log(`🏠 Ingress-compatible server listening on all interfaces`);
 });

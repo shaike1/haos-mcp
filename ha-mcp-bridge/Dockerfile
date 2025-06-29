@@ -1,11 +1,12 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Force complete rebuild - v2.3.8 Dynamic Token Detection  
+# Force complete rebuild - v2.4.3 Ingress Fixed  
 RUN echo "FORCE-REBUILD-$(date +%s)-$(uuidgen)" > /cache-break.txt
-RUN echo "Build: v2.3.8 Dynamic Token Detection" > /build-info.txt
+RUN echo "Build: v2.4.3 Ingress Fixed" > /build-info.txt
 RUN echo "Container cache break: $(uuidgen)" > /force-update.txt
 RUN echo "Timestamp: $(date)" > /build-timestamp.txt
+RUN echo "Cache-buster-243: $(date +%s%N)" > /version-243.txt
 
 # Install Node.js and dependencies
 RUN apk add --no-cache \

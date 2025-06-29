@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.4.2 (Simplified)"
+bashio::log.info "Version: 2.4.3 (Ingress Fixed)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
