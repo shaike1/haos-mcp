@@ -4,7 +4,7 @@
 # ==============================================================================
 
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.4.4 (Ingress Test)"
+bashio::log.info "Version: 3.0.0 (API Proxy)"
 
 # Load configuration
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
@@ -26,8 +26,8 @@ export HA_TOKEN="${SUPERVISOR_TOKEN}"
 # CORS origins for Claude.ai
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
-# Simple URL display
-CLAUDE_URL="https://ha.right-api.com/15715349_ha-mcp-bridge-v2/ingress"
+# Direct API Proxy URL (bypasses ingress)
+CLAUDE_URL="https://ha.right-api.com:3003"
 
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
@@ -37,8 +37,9 @@ bashio::log.info ""
 bashio::log.info "📋 Copy this URL for Claude.ai:"
 bashio::log.info "🔗 ${CLAUDE_URL}"
 bashio::log.info ""
-bashio::log.info "📋 No authentication required!"
-bashio::log.info "✅ Claude.ai can connect directly"
+bashio::log.info "📋 Direct API access - no ingress needed!"
+bashio::log.info "✅ Bypasses ingress routing issues"
+bashio::log.info "🔧 Uses HA API directly via supervisor token"
 bashio::log.info ""
 bashio::log.info "🎯 =================================="
 bashio::log.info ""
@@ -46,7 +47,8 @@ bashio::log.info ""
 # Change to application directory
 cd /app
 
-# Start the TEST server first to verify addon is running
-bashio::log.info "🧪 Starting TEST server to verify addon..."
-bashio::log.info "🧪 This will help diagnose if ingress routing works"
-exec node /usr/bin/test-server.js
+# Start the HA API Proxy (bypassing ingress)
+bashio::log.info "🚀 Starting HA API Proxy server..."
+bashio::log.info "🔄 Bypassing ingress - using direct API calls"
+bashio::log.info "🎯 Direct access via port 3003"
+exec node /usr/bin/ha-api-proxy.js
