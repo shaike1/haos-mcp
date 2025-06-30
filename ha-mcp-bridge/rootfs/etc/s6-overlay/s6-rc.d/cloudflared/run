@@ -1,0 +1,13 @@
+#!/usr/bin/with-contenv bashio
+
+# Check if cloudflare tunnel is enabled
+EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
+CLOUDFLARE_TOKEN="$(bashio::config 'cloudflare_tunnel_token')"
+
+if [[ "${EXTERNAL_METHOD}" == "cloudflare_tunnel" ]] && [[ -n "${CLOUDFLARE_TOKEN}" ]]; then
+    bashio::log.info "Starting Cloudflare tunnel service..."
+    exec /usr/local/bin/cloudflared tunnel --no-autoupdate run --token "${CLOUDFLARE_TOKEN}"
+else
+    bashio::log.info "Cloudflare tunnel not configured, skipping..."
+    exit 0
+fi

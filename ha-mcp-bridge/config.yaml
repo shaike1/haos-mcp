@@ -1,7 +1,7 @@
 name: "HA MCP Bridge Hybrid v2"
-version: "3.2.1"
+version: "3.3.1"
 slug: "ha-mcp-bridge-v2" 
-description: "SSE MCP Server compatible with official HA MCP integration"
+description: "SSE MCP Server with Cloudflare tunnel for Claude.ai direct access"
 url: "https://github.com/shaike1/haos-mcp/tree/main/ha-mcp-bridge"
 icon: "mdi:bridge"
 arch:
@@ -24,12 +24,14 @@ panel_title: "MCP Bridge"
 options:
   admin_password: "changeme123!"
   log_level: "info"
-  external_access_method: "nabu_casa"
+  external_access_method: "cloudflare_tunnel"
   nabu_casa_url: "https://ha.right-api.com"
+  cloudflare_tunnel_token: ""
 schema:
   admin_password: "str"
   log_level: "list(debug|info|warning|error)"
-  external_access_method: "list(nabu_casa|port_forward|reverse_proxy)"
+  external_access_method: "list(nabu_casa|port_forward|reverse_proxy|cloudflare_tunnel)"
   nabu_casa_url: "str?"
+  cloudflare_tunnel_token: "str?"
 hassio_api: true
 homeassistant_api: true

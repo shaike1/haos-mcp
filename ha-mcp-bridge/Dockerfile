@@ -9,12 +9,17 @@ RUN echo "Timestamp: $(date)" > /build-timestamp.txt
 RUN echo "Cache-buster-310: $(date +%s%N)" > /version-310.txt
 RUN echo "SSE-MCP-REBUILD: $(uuidgen)" > /sse-rebuild.txt
 
-# Install Node.js and dependencies
+# Install Node.js, cloudflared, and dependencies
 RUN apk add --no-cache \
     nodejs \
     npm \
     jq \
-    curl
+    curl \
+    wget
+
+# Install cloudflared for tunneling
+RUN wget -O /usr/local/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+    && chmod +x /usr/local/bin/cloudflared
 
 # Set working directory
 WORKDIR /app

@@ -12,6 +12,7 @@ bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
 ADMIN_PASSWORD="$(bashio::config 'admin_password')"
 LOG_LEVEL="$(bashio::config 'log_level')"
+CLOUDFLARE_TOKEN="$(bashio::config 'cloudflare_tunnel_token')"
 
 bashio::log.info "External access method: ${EXTERNAL_METHOD}"
 
@@ -33,7 +34,25 @@ bashio::log.info "Using supervisor token for HA API access"
 export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
 
 # Configure server URL based on access method
-if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
+if [[ "${EXTERNAL_METHOD}" == "cloudflare_tunnel" ]]; then
+    if [[ -n "${CLOUDFLARE_TOKEN}" ]]; then
+        # Start cloudflared tunnel in background
+        bashio::log.info "Starting Cloudflare tunnel..."
+        /usr/local/bin/cloudflared tunnel --no-autoupdate run --token "${CLOUDFLARE_TOKEN}" &
+        CLOUDFLARE_PID=$!
+        
+        # Wait a moment for tunnel to establish
+        sleep 5
+        
+        # Tunnel URL will be provided by Cloudflare dashboard
+        export SERVER_URL="https://your-tunnel-url.trycloudflare.com"
+        bashio::log.info "Cloudflare tunnel started. Check your Cloudflare dashboard for the tunnel URL."
+        bashio::log.warning "Update SERVER_URL with your actual tunnel URL from Cloudflare dashboard"
+    else
+        bashio::log.error "Cloudflare tunnel token required but not provided"
+        export SERVER_URL="http://localhost:3003"
+    fi
+elif [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
     # Try to get Nabu Casa URL from supervisor
     NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
     NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
