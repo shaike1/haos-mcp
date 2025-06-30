@@ -5,7 +5,6 @@ import url from 'url';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID, createHash } from 'crypto';
-import WebSocket from 'ws';
 
 // HA Configuration - ONLY set per session via login form (NO environment variables)
 let HA_HOST = '';
@@ -100,310 +99,6 @@ const adminSessions = new Map(); // Track authenticated admin sessions
 loadSessionData();
 console.log('SESSION PERSISTENCE ENABLED: Sessions will be saved and restored');
 
-// ============================================================================
-// PHASE 3 HYBRID BRIDGE: Integration Detection & Communication
-// ============================================================================
-
-class IntegrationBridge {
-  constructor() {
-    this.integrationAvailable = false;
-    this.lastCheck = 0;
-    this.checkInterval = 30000; // Check every 30 seconds
-    this.integrationServices = [];
-    this.integrationCapabilities = {};
-  }
-
-  async detectIntegration(sessionToken = null) {
-    const now = Date.now();
-    if (now - this.lastCheck < this.checkInterval) {
-      return this.integrationAvailable;
-    }
-
-    try {
-      console.log('🔍 BRIDGE: Checking for MCP Bridge Integration...');
-      
-      // Check if integration is loaded via HA API
-      const entities = await haRequest('/states', {}, sessionToken);
-      const integrationEntities = entities.filter(e => 
-        e.entity_id.startsWith('sensor.mcp_bridge')
-      );
-      
-      if (integrationEntities.length > 0) {
-        console.log('✅ BRIDGE: Integration detected! Found entities:', integrationEntities.map(e => e.entity_id));
-        this.integrationAvailable = true;
-        
-        // Get integration capabilities
-        const capabilitiesSensor = integrationEntities.find(e => 
-          e.entity_id.includes('capabilities')
-        );
-        
-        if (capabilitiesSensor && capabilitiesSensor.attributes) {
-          this.integrationCapabilities = capabilitiesSensor.attributes;
-          console.log('📋 BRIDGE: Integration capabilities:', this.integrationCapabilities);
-        }
-        
-        // Check available services
-        // Check available services via API first, fallback to HA services
-        let services;
-        try {
-          const apiStatus = await haRequest('/api/mcp_bridge/status', {}, sessionToken);
-          services = { mcp_bridge: apiStatus.services || {} };
-          console.log('🛠️ BRIDGE: Using API for service detection');
-        } catch (apiError) {
-          console.log('⚠️ BRIDGE: API not available, using HA services');
-          services = await haRequest('/services', {}, sessionToken);
-        }        if (services.mcp_bridge) {
-          this.integrationServices = Object.keys(services.mcp_bridge);
-          console.log('🛠️ BRIDGE: Integration services:', this.integrationServices);
-        }
-      } else {
-        console.log('❌ BRIDGE: Integration not detected - using add-on tools only');
-        this.integrationAvailable = false;
-        this.integrationCapabilities = {};
-        this.integrationServices = [];
-      }
-      
-      this.lastCheck = now;
-      return this.integrationAvailable;
-      
-    } catch (error) {
-      console.error('🚨 BRIDGE: Error detecting integration:', error.message);
-      this.integrationAvailable = false;
-      return false;
-    }
-  }
-
-  async callIntegrationService(serviceName, serviceData, sessionToken = null) {
-    if (!this.integrationAvailable) {
-      throw new Error('Integration not available');
-    }
-
-    try {
-      console.log(`🔗 BRIDGE: Calling integration service: ${serviceName}`);
-      const result = await haRequest(`/api/mcp_bridge/${serviceName}`, {
-        method: 'POST',
-        body: JSON.stringify(serviceData)
-      }, sessionToken);
-      
-      console.log(`✅ BRIDGE: Integration service completed: ${serviceName}`);
-      return result;
-    } catch (error) {
-      console.error(`🚨 BRIDGE: Integration service failed: ${serviceName}`, error.message);
-      throw error;
-    }
-  }
-
-  isServiceAvailable(serviceName) {
-    return this.integrationAvailable && this.integrationServices.includes(serviceName);
-  }
-
-  hasCapability(capability) {
-    return this.integrationAvailable && this.integrationCapabilities[capability] === true;
-  }
-}
-
-// Global integration bridge instance
-const integrationBridge = new IntegrationBridge();
-
-// ============================================================================
-// PHASE 1 ENHANCEMENT: WebSocket Manager for Real-time HA Communication
-// ============================================================================
-
-class HAWebSocketManager {
-  constructor() {
-    this.ws = null;
-    this.connected = false;
-    this.messageId = 1;
-    this.pendingRequests = new Map();
-    this.stateCache = new Map();
-    this.eventSubscriptions = new Set();
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-  }
-
-  async connect() {
-    if (!HA_HOST || !HA_API_TOKEN) {
-      console.log('WebSocket: Waiting for HA credentials...');
-      return false;
-    }
-
-    try {
-      const wsUrl = `${HA_HOST.replace('http', 'ws')}/api/websocket`;
-      console.log(`WebSocket: Connecting to ${wsUrl}`);
-      
-      this.ws = new WebSocket(wsUrl);
-      
-      this.ws.on('open', () => {
-        console.log('WebSocket: Connected to Home Assistant');
-        this.connected = true;
-        this.reconnectAttempts = 0;
-      });
-
-      this.ws.on('message', (data) => {
-        this.handleMessage(JSON.parse(data.toString()));
-      });
-
-      this.ws.on('close', () => {
-        console.log('WebSocket: Connection closed');
-        this.connected = false;
-        this.scheduleReconnect();
-      });
-
-      this.ws.on('error', (error) => {
-        console.error('WebSocket error:', error.message);
-        this.connected = false;
-      });
-
-      return true;
-    } catch (error) {
-      console.error('WebSocket connection failed:', error.message);
-      return false;
-    }
-  }
-
-  handleMessage(message) {
-    if (message.type === 'auth_required') {
-      this.authenticate();
-    } else if (message.type === 'auth_ok') {
-      console.log('WebSocket: Authenticated successfully');
-      this.subscribeToEvents();
-      this.loadAllStates();
-    } else if (message.type === 'result') {
-      this.handleResult(message);
-    } else if (message.type === 'event') {
-      this.handleEvent(message.event);
-    }
-  }
-
-  authenticate() {
-    this.send({
-      type: 'auth',
-      access_token: HA_API_TOKEN
-    });
-  }
-
-  async subscribeToEvents() {
-    // Subscribe to state changes for real-time updates
-    this.send({
-      id: this.messageId++,
-      type: 'subscribe_events',
-      event_type: 'state_changed'
-    });
-    
-    console.log('WebSocket: Subscribed to state_changed events');
-  }
-
-  async loadAllStates() {
-    // Load all entity states into cache
-    const id = this.messageId++;
-    this.send({
-      id,
-      type: 'get_states'
-    });
-    
-    this.pendingRequests.set(id, {
-      type: 'get_states',
-      resolve: (states) => {
-        states.forEach(state => {
-          this.stateCache.set(state.entity_id, state);
-        });
-        console.log(`WebSocket: Cached ${states.length} entity states`);
-      }
-    });
-  }
-
-  handleResult(message) {
-    const request = this.pendingRequests.get(message.id);
-    if (request) {
-      if (message.success) {
-        request.resolve(message.result);
-      } else {
-        request.reject && request.reject(new Error(message.error.message));
-      }
-      this.pendingRequests.delete(message.id);
-    }
-  }
-
-  handleEvent(event) {
-    if (event.event_type === 'state_changed') {
-      const { entity_id, new_state } = event.data;
-      if (new_state) {
-        this.stateCache.set(entity_id, new_state);
-        console.log(`WebSocket: State updated - ${entity_id}: ${new_state.state}`);
-      }
-    }
-  }
-
-  async callService(domain, service, serviceData = {}) {
-    if (!this.connected) {
-      throw new Error('WebSocket not connected to Home Assistant');
-    }
-
-    return new Promise((resolve, reject) => {
-      const id = this.messageId++;
-      
-      this.pendingRequests.set(id, {
-        type: 'call_service',
-        resolve,
-        reject
-      });
-
-      this.send({
-        id,
-        type: 'call_service',
-        domain,
-        service,
-        service_data: serviceData
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (this.pendingRequests.has(id)) {
-          this.pendingRequests.delete(id);
-          reject(new Error('Service call timeout'));
-        }
-      }, 30000);
-    });
-  }
-
-  getEntityState(entityId) {
-    return this.stateCache.get(entityId);
-  }
-
-  getAllStates() {
-    return Array.from(this.stateCache.values());
-  }
-
-  send(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    }
-  }
-
-  scheduleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
-      console.log(`WebSocket: Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-      
-      setTimeout(() => {
-        this.connect();
-      }, delay);
-    }
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-      this.connected = false;
-    }
-  }
-}
-
-// Global WebSocket manager instance
-const haWebSocket = new HAWebSocketManager();
-
 console.log('Admin Authentication:');
 console.log('Username:', ADMIN_USERNAME);
 console.log('Password:', ADMIN_PASSWORD ? '***SET***' : 'NOT SET - USING DEFAULT');
@@ -487,16 +182,9 @@ async function haRequest(endpoint, options = {}, sessionToken = null) {
   }
 }
 
-// Get available Home Assistant tools - HYBRID VERSION
-async function getTools(sessionToken = null) {
-  // Detect integration capabilities
-  await integrationBridge.detectIntegration(sessionToken);
-  
-  console.log(`🔧 HYBRID TOOLS: Integration available: ${integrationBridge.integrationAvailable}`);
-  if (integrationBridge.integrationAvailable) {
-    console.log(`🔧 HYBRID TOOLS: Integration services: ${integrationBridge.integrationServices.join(', ')}`);
-  }
-  const addonTools = [
+// Get available Home Assistant tools
+async function getTools() {
+  return [
     {
       name: "get_entities",
       description: "Get all Home Assistant entities or filter by domain",
@@ -604,147 +292,10 @@ async function getTools(sessionToken = null) {
       }
     }
   ];
-
-  // Add integration-specific advanced tools if available
-  const integrationTools = [];
-  
-  if (integrationBridge.hasCapability('dynamic_scene_creation')) {
-    integrationTools.push({
-      name: "create_dynamic_scene",
-      description: "🚀 ADVANCED: Create dynamic scenes with complex configurations (Integration)",
-      inputSchema: {
-        type: "object",
-        properties: {
-          name: { type: "string", description: "Scene name" },
-          entities: {
-            type: "array",
-            description: "List of entities with their desired states",
-            items: {
-              type: "object",
-              properties: {
-                entity_id: { type: "string", description: "Entity ID" },
-                state: { type: "string", description: "Desired state" },
-                brightness: { type: "number", description: "Brightness (1-255)" },
-                color_temp: { type: "number", description: "Color temperature (153-500)" },
-                temperature: { type: "number", description: "Temperature (5-35)" }
-              },
-              required: ["entity_id"]
-            }
-          }
-        },
-        required: ["name", "entities"]
-      }
-    });
-  }
-  
-  if (integrationBridge.hasCapability('automation_management')) {
-    integrationTools.push({
-      name: "modify_automation",
-      description: "🚀 ADVANCED: Create or modify automations with templates (Integration)",
-      inputSchema: {
-        type: "object",
-        properties: {
-          name: { type: "string", description: "Automation name" },
-          template: { type: "string", description: "Template: motion_light, sunset_scene, presence_climate, custom" },
-          trigger_entity: { type: "string", description: "Trigger entity ID" },
-          target_entity: { type: "string", description: "Target entity ID" },
-          config: { type: "object", description: "Additional configuration" }
-        },
-        required: ["name"]
-      }
-    });
-  }
-  
-  if (integrationBridge.hasCapability('bulk_device_control')) {
-    integrationTools.push({
-      name: "bulk_device_control",
-      description: "🚀 ADVANCED: Control multiple devices with transaction support (Integration)",
-      inputSchema: {
-        type: "object",
-        properties: {
-          operations: {
-            type: "array",
-            description: "List of operations to perform",
-            items: {
-              type: "object",
-              properties: {
-                entity_id: { type: "string", description: "Entity ID" },
-                action: { type: "string", description: "Action to perform" },
-                params: { type: "object", description: "Action parameters" }
-              },
-              required: ["entity_id", "action"]
-            }
-          },
-          rollback_on_error: { type: "boolean", description: "Rollback if any operation fails" }
-        },
-        required: ["operations"]
-      }
-    });
-  }
-  
-  if (integrationBridge.hasCapability('dashboard_generation')) {
-    integrationTools.push({
-      name: "generate_dashboard",
-      description: "🚀 ADVANCED: Generate Lovelace dashboard configurations (Integration)",
-      inputSchema: {
-        type: "object",
-        properties: {
-          title: { type: "string", description: "Dashboard title" },
-          area_id: { type: "string", description: "Area/room ID" },
-          type: { type: "string", description: "Dashboard type: room, security, energy" }
-        },
-        required: ["title"]
-      }
-    });
-  }
-
-  const allTools = [...addonTools, ...integrationTools];
-  
-  console.log(`🔧 HYBRID TOOLS: Returning ${allTools.length} tools (${addonTools.length} add-on + ${integrationTools.length} integration)`);
-  if (integrationTools.length > 0) {
-    console.log(`🚀 Advanced tools available: ${integrationTools.map(t => t.name).join(', ')}`);
-  }
-  
-  return allTools;
 }
 
-// Call a tool - HYBRID VERSION with integration routing
+// Call a tool - now accepts sessionToken for HA connection
 async function callTool(name, args, sessionToken = null) {
-  // Check if this is an integration tool
-  const integrationTools = ['create_dynamic_scene', 'modify_automation', 'bulk_device_control', 'generate_dashboard'];
-  
-  if (integrationTools.includes(name)) {
-    // Ensure integration is available
-    await integrationBridge.detectIntegration(sessionToken);
-    
-    if (integrationBridge.isServiceAvailable(name)) {
-      console.log(`🚀 HYBRID: Routing ${name} to integration`);
-      try {
-        const result = await integrationBridge.callIntegrationService(name, args, sessionToken);
-        return {
-          content: [{
-            type: "text",
-            text: `✅ Advanced operation completed via integration: ${JSON.stringify(result, null, 2)}`
-          }]
-        };
-      } catch (error) {
-        console.error(`🚨 HYBRID: Integration tool ${name} failed, falling back to add-on:`, error.message);
-        // Continue to add-on fallback below
-      }
-    } else {
-      console.log(`⚠️ HYBRID: Integration tool ${name} not available, using add-on fallback`);
-      // Provide limited add-on alternative for advanced tools
-      if (name === 'create_dynamic_scene') {
-        return {
-          content: [{
-            type: "text",
-            text: `⚠️ Dynamic scene creation requires the MCP Bridge Integration. Using basic scene approach instead. You can manually create a scene via HA UI with the entities: ${JSON.stringify(args.entities, null, 2)}`
-          }]
-        };
-      }
-      // Continue to normal add-on tool processing
-    }
-  }
   console.log(`🔧 TOOL CALL: ${name}`);
   console.log(`🔧 Tool arguments:`, JSON.stringify(args, null, 2));
   console.log(`🔧 Session token available:`, sessionToken ? 'YES' : 'NO');
@@ -1115,85 +666,6 @@ const httpServer = http.createServer(async (req, res) => {
   
   const parsedUrl = url.parse(req.url, true);
   
-  // Log all incoming requests for debugging
-  console.log(`📥 Request: ${req.method} ${req.url}`);
-  console.log(`📥 Headers:`, Object.keys(req.headers).filter(h => h.includes('ingress') || h.includes('host')).reduce((obj, key) => {
-    obj[key] = req.headers[key];
-    return obj;
-  }, {}));
-  
-  // Handle ingress paths - for HA ingress, we might not need to strip anything
-  let actualPath = parsedUrl.pathname;
-  
-  // For Home Assistant ingress, the server should handle ALL paths as-is
-  // The ingress proxy forwards requests directly to the container
-  console.log(`📍 Handling path: ${actualPath}`);
-  
-  // Root path handler for ingress health checks  
-  if (req.method === 'GET' && parsedUrl.pathname === '/') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    const serverUrl = process.env.SERVER_URL || 'https://ha.right-api.com';
-    res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-    <title>HA MCP Bridge - Ready for Claude.ai</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { color: #2196F3; border-bottom: 2px solid #2196F3; padding-bottom: 10px; margin-bottom: 20px; }
-        .url-box { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #2196F3; }
-        .url { font-family: monospace; font-size: 14px; word-break: break-all; font-weight: bold; color: #1976D2; }
-        .status { color: #4CAF50; font-weight: bold; }
-        .instructions { background: #fff3e0; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #FF9800; }
-        .endpoint { background: #f5f5f5; padding: 8px; margin: 5px 0; border-radius: 3px; font-family: monospace; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 class="header">🏠 HA MCP Bridge v2.1.2</h1>
-        
-        <p class="status">✅ Status: Ready for Claude.ai connection</p>
-        
-        <h2>🎯 Claude.ai MCP URL</h2>
-        <div class="url-box">
-            <strong>Use this URL in Claude.ai:</strong><br>
-            <div class="url">${serverUrl}</div>
-        </div>
-        
-        <div class="instructions">
-            <h3>📋 Setup Instructions:</h3>
-            <ol>
-                <li>Copy the URL above</li>
-                <li>Download: <a href="https://raw.githubusercontent.com/shaike1/haos-mcp/main/ha-mcp-bridge.dxt" target="_blank">ha-mcp-bridge.dxt</a></li>
-                <li>Replace "REPLACE_WITH_YOUR_INGRESS_URL" with the URL above</li>
-                <li>Import the .dxt file into Claude.ai → Settings → MCP</li>
-                <li>Login with username: <strong>admin</strong> and your configured password</li>
-            </ol>
-        </div>
-        
-        <h3>🔗 Available Endpoints:</h3>
-        <div class="endpoint">/.well-known/oauth-authorization-server</div>
-        <div class="endpoint">/oauth/authorize</div>
-        <div class="endpoint">/oauth/callback</div>
-        <div class="endpoint">/oauth/token</div>
-        
-        <h3>🏠 Home Assistant Tools Available:</h3>
-        <ul>
-            <li>🏠 Light control (get_lights, control_light)</li>
-            <li>🌡️ Sensor monitoring (get_sensors)</li>
-            <li>🔌 Switch control (get_switches, control_switch)</li>
-            <li>🌡️ Climate control (get_climate, set_climate)</li>
-            <li>⚡ Automation triggers (run_automation)</li>
-            <li>📍 Areas and devices (get_areas, get_devices)</li>
-        </ul>
-    </div>
-</body>
-</html>
-    `);
-    return;
-  }
-
   // OAuth discovery endpoint
   if (req.method === 'GET' && parsedUrl.pathname === '/.well-known/oauth-authorization-server') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1985,15 +1457,7 @@ const httpServer = http.createServer(async (req, res) => {
           
           setTimeout(async () => {
             try {
-              // Pass session token for integration detection
-              let sessionTokenForTools = null;
-              if (sessionId) {
-                const existingSession = sessions.get(sessionId);
-                if (existingSession && existingSession.authenticated && existingSession.adminSessionToken) {
-                  sessionTokenForTools = existingSession.adminSessionToken;
-                }
-              }
-              const tools = await getTools(sessionTokenForTools);
+              const tools = await getTools();
               
               // Send tools as a tools/list_changed notification per MCP spec
               const toolsNotification = {
@@ -2276,15 +1740,7 @@ const httpServer = http.createServer(async (req, res) => {
             // HACK: Since Claude.ai only requests prompts/list and never tools/list,
             // we'll send the tools response when it asks for prompts
             console.log('HACK: Claude.ai requested prompts/list, sending tools instead!');
-            // Pass session token for integration detection
-            let sessionTokenForTools = null;
-            if (sessionId) {
-              const sessionData = sessions.get(sessionId);
-              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
-                sessionTokenForTools = sessionData.adminSessionToken;
-              }
-            }
-            const tools = await getTools(sessionTokenForTools);
+            const tools = await getTools();
             response = {
               jsonrpc: '2.0',
               id: message.id,
@@ -2296,15 +1752,7 @@ const httpServer = http.createServer(async (req, res) => {
             console.log('Tools being sent:', tools.map(t => t.name).join(', '));
           } else if (message.method === 'tools/list') {
             console.log('SUCCESS: Claude.ai is requesting tools/list!');
-            // Pass session token for integration detection
-            let sessionTokenForTools = null;
-            if (sessionId) {
-              const sessionData = sessions.get(sessionId);
-              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
-                sessionTokenForTools = sessionData.adminSessionToken;
-              }
-            }
-            const tools = await getTools(sessionTokenForTools);
+            const tools = await getTools();
             response = {
               jsonrpc: '2.0',
               id: message.id,
@@ -2348,15 +1796,7 @@ const httpServer = http.createServer(async (req, res) => {
           } else {
             // ULTIMATE HACK: For any unknown method, send tools
             console.log(`ULTIMATE HACK: Unknown method '${message.method}', sending tools anyway!`);
-            // Pass session token for integration detection
-            let sessionTokenForTools = null;
-            if (sessionId) {
-              const sessionData = sessions.get(sessionId);
-              if (sessionData && sessionData.authenticated && sessionData.adminSessionToken) {
-                sessionTokenForTools = sessionData.adminSessionToken;
-              }
-            }
-            const tools = await getTools(sessionTokenForTools);
+            const tools = await getTools();
             response = {
               jsonrpc: '2.0',
               id: message.id,
@@ -2485,7 +1925,7 @@ httpServer.timeout = 60000; // 60 seconds request timeout
 httpServer.keepAliveTimeout = 65000; // 65 seconds keep-alive
 httpServer.headersTimeout = 66000; // 66 seconds headers timeout
 
-const PORT = process.env.PORT || 3003; // Use environment PORT or 3003 as fallback
+const PORT = process.env.PORT || 3007; // Use environment PORT or 3007 as fallback
 console.log('Environment PORT:', process.env.PORT);
 console.log('Config port:', PORT);
 httpServer.listen(PORT, '0.0.0.0', () => {

@@ -2,85 +2,76 @@
 
 # Load configuration from Home Assistant
 CONFIG_PATH=/data/options.json
+export ADDON_CONFIG="$(bashio::config)"
 
 # Log startup
 bashio::log.info "Starting HA MCP Bridge Add-on..."
-bashio::log.info "Version: 2.0.1 (Hybrid Bridge - Fixed)"
+bashio::log.info "Version: $(bashio::addon.version)"
 bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 
-# Get basic configuration
-EXTERNAL_METHOD="$(bashio::config 'external_access_method')"
-ADMIN_PASSWORD="$(bashio::config 'admin_password')"
-LOG_LEVEL="$(bashio::config 'log_level')"
-CLOUDFLARE_TOKEN="$(bashio::config 'cloudflare_tunnel_token')"
-
+# Determine external access method
+EXTERNAL_METHOD="$(bashio::config 'external_access.method')"
 bashio::log.info "External access method: ${EXTERNAL_METHOD}"
 
-# Use fixed port 3003 as defined in config.yaml
-export PORT="3003"
-export LOG_LEVEL="${LOG_LEVEL}"
-
-# Basic OAuth configuration
-export OAUTH_ENABLED="true"
-export ADMIN_USERNAME="admin"
-export ADMIN_PASSWORD="${ADMIN_PASSWORD}"
-
-# Home Assistant integration using supervisor token
-export HA_URL="http://supervisor/core"
-export HA_TOKEN="${SUPERVISOR_TOKEN}"
-bashio::log.info "Using supervisor token for HA API access"
-
-# CORS origins for Claude.ai
-export CORS_ORIGIN="https://claude.ai,https://app.claude.ai"
-
 # Configure server URL based on access method
-if [[ "${EXTERNAL_METHOD}" == "cloudflare_tunnel" ]]; then
-    if [[ -n "${CLOUDFLARE_TOKEN}" ]]; then
-        # Start cloudflared tunnel in background
-        bashio::log.info "Starting Cloudflare tunnel..."
-        /usr/local/bin/cloudflared tunnel --no-autoupdate run --token "${CLOUDFLARE_TOKEN}" &
-        CLOUDFLARE_PID=$!
-        
-        # Wait a moment for tunnel to establish
-        sleep 5
-        
-        # Tunnel URL will be provided by Cloudflare dashboard
-        export SERVER_URL="https://your-tunnel-url.trycloudflare.com"
-        bashio::log.info "Cloudflare tunnel started. Check your Cloudflare dashboard for the tunnel URL."
-        bashio::log.warning "Update SERVER_URL with your actual tunnel URL from Cloudflare dashboard"
-    else
-        bashio::log.error "Cloudflare tunnel token required but not provided"
-        export SERVER_URL="http://localhost:3003"
-    fi
-elif [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]]; then
+if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]] && bashio::config.true 'nabu_casa.expose_port'; then
     # Try to get Nabu Casa URL from supervisor
     NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
     NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
     
     if [[ -n "${NABU_CASA_URL}" ]]; then
-        # For Nabu Casa with ingress, use standard HTTPS port (443)
-        export SERVER_URL="${NABU_CASA_URL}/api/hassio_ingress/ha_mcp_bridge"
-        bashio::log.info "Configured for Nabu Casa ingress access: ${SERVER_URL}"
+        export SERVER_URL="${NABU_CASA_URL}:$(bashio::config 'external_port')"
+        bashio::log.info "Configured for Nabu Casa access: ${SERVER_URL}"
     else
-        bashio::log.warning "Nabu Casa URL not available, using localhost"
-        export SERVER_URL="http://localhost:3003"
+        bashio::log.warning "Nabu Casa URL not available, using manual configuration"
+        export SERVER_URL="$(bashio::config 'server_url')"
     fi
 else
-    # For port forwarding, use direct port access
-    export SERVER_URL="https://your-domain.com:3003"
-    bashio::log.info "Using port forwarding server URL: ${SERVER_URL}"
+    # Use manual configuration for port_forward or reverse_proxy
+    export SERVER_URL="$(bashio::config 'server_url')"
+    bashio::log.info "Using manual server URL configuration: ${SERVER_URL}"
 fi
 
-# OAuth redirect URI
+# Set environment variables from add-on config
+export PORT="$(bashio::config 'external_port')"
+export LOG_LEVEL="$(bashio::config 'log_level')"
+export DEBUG="$(bashio::config 'debug')"
+
+# OAuth configuration with dynamic redirect URI
+export OAUTH_ENABLED="$(bashio::config 'oauth.enable')"
+export ADMIN_USERNAME="$(bashio::config 'oauth.admin_username')"
+export ADMIN_PASSWORD="$(bashio::config 'oauth.admin_password')"
 export OAUTH_REDIRECT_URI="${SERVER_URL}/oauth/callback"
+
+# Timeout settings (preserve optimizations)
+export REQUEST_TIMEOUT="$(bashio::config 'timeouts.request_timeout')"
+export KEEPALIVE_TIMEOUT="$(bashio::config 'timeouts.keepalive_timeout')"
+export SSE_PING_INTERVAL="$(bashio::config 'timeouts.sse_ping_interval')"
+
+# Home Assistant integration
+if bashio::config.true 'ha_integration.use_supervisor_token'; then
+    export HA_URL="http://supervisor/core"
+    export HA_TOKEN="${SUPERVISOR_TOKEN}"
+    bashio::log.info "Using supervisor token for HA API access"
+else
+    export HA_URL="$(bashio::config 'ha_integration.external_ha_url')"
+    export HA_TOKEN="$(bashio::config 'ha_integration.external_ha_token')"
+    bashio::log.info "Using external HA configuration"
+fi
+
+# CORS origins - include Nabu Casa domains automatically
+CORS_ORIGINS="$(bashio::config 'cors_origins')"
+if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]] && [[ -n "${NABU_CASA_URL}" ]]; then
+    # Add Nabu Casa domain to CORS origins
+    NABU_CASA_DOMAIN=$(echo "${NABU_CASA_URL}" | sed 's|https\?://||')
+    export CORS_ORIGIN="${CORS_ORIGINS},https://${NABU_CASA_DOMAIN}"
+else
+    export CORS_ORIGIN="${CORS_ORIGINS}"
+fi
 
 # Ingress configuration
 export INGRESS_URL="/api/hassio/app/ha_mcp_bridge"
-
-# Timeout settings with defaults
-export REQUEST_TIMEOUT="60000"
-export KEEPALIVE_TIMEOUT="65000"
-export SSE_PING_INTERVAL="8000"
+export INGRESS_PORT="$(bashio::config 'external_port')"
 
 # Log final configuration
 bashio::log.info "External URL: ${SERVER_URL}"
@@ -89,8 +80,8 @@ bashio::log.info "Port: ${PORT}"
 bashio::log.info "OAuth Redirect: ${OAUTH_REDIRECT_URI}"
 
 # Change to application directory
-cd /app
+cd /usr/src/app
 
 # Start the MCP server
-bashio::log.info "Starting Hybrid MCP server (Phase 3) with Integration Bridge support..."
+bashio::log.info "Starting MCP server with ingress and external access support..."
 exec node server.js

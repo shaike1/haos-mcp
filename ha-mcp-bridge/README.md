@@ -1,109 +1,102 @@
-# HA MCP Bridge Add-on
+# Home Assistant Add-on: HA MCP Bridge
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
-![Supports aarch64](https://img.shields.io/badge/aarch64-yes-green.svg)
-![Supports amd64](https://img.shields.io/badge/amd64-yes-green.svg)
-![Supports armhf](https://img.shields.io/badge/armhf-yes-green.svg)
-![Supports armv7](https://img.shields.io/badge/armv7-yes-green.svg)
-![Supports i386](https://img.shields.io/badge/i386-yes-green.svg)
+![Supports aarch64 Architecture][aarch64-shield] ![Supports amd64 Architecture][amd64-shield] ![Supports armhf Architecture][armhf-shield] ![Supports armv7 Architecture][armv7-shield] ![Supports i386 Architecture][i386-shield]
 
-**Model Context Protocol server for Claude.ai integration with Home Assistant**
+A Home Assistant add-on that provides a Model Context Protocol (MCP) server, enabling Claude.ai to directly control your Home Assistant devices and read sensor data.
 
-Transform your Home Assistant into an MCP server that Claude.ai can connect to, enabling natural language control of your smart home devices.
+## About
 
-## 🚀 Quick Start
+This add-on transforms your Home Assistant into an MCP server that Claude.ai can connect to, allowing natural language control of your smart home. Through a secure OAuth 2.1 authentication flow, Claude.ai gains access to:
 
-### 1. Install the Add-on
-1. Navigate to **Settings** → **Add-ons** → **Add-on Store** in Home Assistant
-2. Install "HA MCP Bridge" 
-3. Go to **Configuration** tab and set a strong admin password
-4. **Start** the add-on
+- 🏠 **Device Control**: Lights, switches, climate systems
+- 📊 **Sensor Monitoring**: Temperature, motion, presence, water leak detection  
+- 🤖 **Automation Management**: View and understand your automations
+- 🔧 **Real-time Communication**: Optimized for Claude.ai's web interface
 
-### 2. Get Your Connection URL
-After starting the add-on:
-1. **Check the Logs tab** - your external URL will be displayed like this:
+## Features
+
+- **Full MCP Protocol Support**: Compatible with Claude.ai's latest integrations
+- **Secure Authentication**: OAuth 2.1 with PKCE for safe external access
+- **Home Assistant Integration**: Native supervisor token support
+- **Performance Optimized**: Timeout settings tuned for stable Claude.ai connections
+- **Comprehensive Tool Set**: 14 different tools for complete home control
+- **Real-time Updates**: Server-Sent Events for instant tool discovery
+
+## Installation
+
+1. Navigate to the **Add-on Store** in your Home Assistant
+2. Add this repository: `https://github.com/shaike1/ha-mcp-addon`
+3. Install the "HA MCP Bridge" add-on
+4. Configure the add-on options
+5. Start the add-on
+
+## Quick Start
+
+1. **Configure the add-on**:
+   ```yaml
+   server_url: "https://your-domain.com"
+   oauth:
+     admin_password: "your-secure-password"
    ```
-   ✅ External URL: https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge
-   ```
-2. **Copy this exact URL** - you'll need it for Claude.ai
-3. **Available for copy-paste** directly from the logs
 
-### 3. Connect Claude.ai
-1. Open **Claude.ai** → **Settings** → **Feature Preview**
-2. Enable **Model Context Protocol** 
-3. Click **Add MCP Server**
-4. **Paste your URL** from step 2 (e.g., `https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge`)
-5. Complete OAuth authentication when prompted
+2. **Start the add-on** and note the external URL
 
-## 🔧 How It Works
+3. **Connect Claude.ai**:
+   - Add MCP server with your external URL
+   - Complete OAuth authentication
+   - Start controlling your home with natural language!
 
-### **Internal Home Assistant Access (Automatic)**
-- ✅ **No setup required**: Add-on automatically connects to Home Assistant
-- ✅ **Uses Supervisor Token**: Secure internal API access 
-- ✅ **Full device access**: Controls all your entities automatically
-- ✅ **Local communication**: Add-on ↔ Home Assistant (internal network)
+## Available Tools
 
-### **External Claude.ai Access**
-- 🌐 **Nabu Casa** (recommended): Automatic SSL and external access
-- 🔧 **Port Forwarding**: Manual router setup required
-- 🛡️ **OAuth 2.1**: Secure authentication with PKCE
-- 🔐 **CORS Protected**: Only Claude.ai domains allowed
+### Device Control
+- `get_entities` - List all entities or filter by domain
+- `call_service` - Control any Home Assistant service
+- `get_lights` / `control_lights` - Advanced lighting control
+- `get_switches` - Switch management
+- `get_climate` - Climate system control
 
-## 🎯 Features
+### Sensor Monitoring  
+- `get_sensors` - Monitor temperature, motion, presence, water leak sensors
+- `get_temperature_simple` - Quick temperature readings
 
-- 🏠 **Complete Device Control**: Lights, switches, climate systems, sensors
-- 🔐 **Secure Authentication**: OAuth 2.1 with PKCE for safe external access
-- 🌐 **Nabu Casa Integration**: Automatic URL detection and SSL handling
-- ⚡ **Performance Optimized**: Timeout settings tuned for Claude.ai stability
-- 📊 **Comprehensive Monitoring**: Temperature, motion, presence, water leak sensors
-- 🛡️ **Security First**: Supervisor token integration and CORS protection
+### System Management
+- `get_automations` - View automation status
+- `test_simple` - Connection testing
 
-## 📋 Configuration Options
+## Configuration
 
-- **Admin Password**: Set a strong password for OAuth authentication
-- **Log Level**: Choose debug, info, warning, or error
-- **External Access Method**: 
-  - `nabu_casa` - Use Nabu Casa (recommended)
-  - `port_forward` - Manual port forwarding
-  - `reverse_proxy` - Use your own reverse proxy
+See the **Documentation** tab for detailed configuration options including:
+- OAuth authentication setup
+- Home Assistant integration methods
+- Performance tuning options
+- Security considerations
 
-## 🔍 Finding Your Connection URL
+## Example Usage with Claude.ai
 
-**The add-on will show your URL in the Logs tab after starting:**
+Once configured, you can use natural language with Claude.ai:
 
-### **Nabu Casa Users (with Ingress)**
-```
-[INFO] External URL: https://abc123.ui.nabu-casa.com/api/hassio_ingress/ha_mcp_bridge
-```
-👆 **Copy this exact URL** - uses port 443 (standard HTTPS) via Home Assistant ingress
+- *"Turn on the living room lights at 50% brightness"*
+- *"What's the temperature in all rooms?"*
+- *"Check if any water leak sensors are triggered"*
+- *"Set the thermostat to heat mode at 22 degrees"*
+- *"Turn off all lights and lock the doors"*
 
-### **Self-Hosted Users (Port Forwarding)**
-```
-[INFO] External URL: https://your-domain.com:3003
-```
-👆 **Copy this URL** - uses direct port 3003 (make sure it's forwarded)
+## Support
 
-## 🛠️ Troubleshooting
+- 📖 **Documentation**: Complete setup guide in the Documentation tab
+- 🐛 **Issues**: Report problems on [GitHub Issues][issues]
+- 💬 **Discussions**: Community support and feature requests
 
-**Add-on won't start?**
-- Check you've set a strong admin password
-- Verify port 3003 isn't used by another service
+## Links
 
-**Claude.ai can't connect?**
-- Ensure your external URL is accessible from the internet
-- Check firewall allows port 3003
-- Verify SSL certificate is valid
+- **Source Repository**: https://github.com/shaike1/ha-mcp-bridge
+- **Add-on Repository**: https://github.com/shaike1/ha-mcp-addon
+- **Home Assistant Community**: [Community Forum][community]
 
-**OAuth authentication fails?**
-- Double-check your admin password
-- Try using incognito/private browser mode
-- Ensure system time is synchronized
-
-## 📞 Support
-
-- **Issues**: [Report problems](https://github.com/shaike1/haos-mcp/issues)
-- **Source Code**: [GitHub Repository](https://github.com/shaike1/ha-mcp-bridge)
-
-## 📄 License
-
-MIT License
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
+[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
+[i386-shield]: https://img.shields.io/badge/i386-yes-green.svg
+[issues]: https://github.com/shaike1/ha-mcp-addon/issues
+[community]: https://community.home-assistant.io
