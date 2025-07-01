@@ -46,6 +46,11 @@ options:
   nabu_casa:
     expose_port: true
     auto_ssl: true
+
+  # Cloudflared configuration (optional - for secure tunnel access)
+  cloudflared:
+    enabled: false
+    token: ""
   
   # Basic settings
   log_level: "info"
@@ -80,10 +85,13 @@ schema:
   external_port: "port"
   external_access:
     enabled: "bool"
-    method: "list(nabu_casa|port_forward|reverse_proxy)"
+    method: "list(nabu_casa|port_forward|reverse_proxy|cloudflared)"
   nabu_casa:
     expose_port: "bool"
     auto_ssl: "bool"
+  cloudflared:
+    enabled: "bool"
+    token: "str?"
   log_level: "list(debug|info|warning|error)"
   debug: "bool"
   cors_origins: ["url"]

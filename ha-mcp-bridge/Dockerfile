@@ -7,7 +7,19 @@ RUN apk add --no-cache \
     npm \
     wget \
     curl \
-    git
+    git \
+    supervisor
+
+# Download and install cloudflared (multi-architecture support)
+RUN ARCH=$(uname -m) && \
+    case $ARCH in \
+        x86_64) CLOUDFLARED_ARCH="amd64" ;; \
+        aarch64) CLOUDFLARED_ARCH="arm64" ;; \
+        armv7l) CLOUDFLARED_ARCH="arm" ;; \
+        *) echo "Unsupported architecture: $ARCH"; exit 1 ;; \
+    esac && \
+    wget -q "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CLOUDFLARED_ARCH}" -O /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
 
 # Set working directory
 WORKDIR /usr/src/app

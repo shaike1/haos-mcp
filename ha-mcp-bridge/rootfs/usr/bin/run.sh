@@ -13,8 +13,24 @@ bashio::log.info "Configuration loaded from: ${CONFIG_PATH}"
 EXTERNAL_METHOD="$(bashio::config 'external_access.method')"
 bashio::log.info "External access method: ${EXTERNAL_METHOD}"
 
-# Configure server URL based on access method
-if [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]] && bashio::config.true 'nabu_casa.expose_port'; then
+# Handle Cloudflared setup
+if [[ "${EXTERNAL_METHOD}" == "cloudflared" ]]; then
+    CLOUDFLARED_ENABLED="$(bashio::config 'cloudflared.enabled')"
+    CLOUDFLARED_TOKEN="$(bashio::config 'cloudflared.token')"
+    
+    if [[ "${CLOUDFLARED_ENABLED}" == "true" ]] && [[ -n "${CLOUDFLARED_TOKEN}" ]]; then
+        bashio::log.info "Cloudflared tunnel enabled"
+        # Start cloudflared in background
+        /usr/bin/run-cloudflared.sh &
+        # Use manual server URL for cloudflared
+        export SERVER_URL="$(bashio::config 'server_url')"
+        bashio::log.info "Using Cloudflared tunnel URL: ${SERVER_URL}"
+    else
+        bashio::log.error "Cloudflared method selected but not properly configured"
+        bashio::log.error "Please enable cloudflared and provide a valid token"
+        exit 1
+    fi
+elif [[ "${EXTERNAL_METHOD}" == "nabu_casa" ]] && bashio::config.true 'nabu_casa.expose_port'; then
     # Try to get Nabu Casa URL from supervisor
     NABU_CASA_INFO=$(bashio::api.supervisor "GET" "/cloud/info" 2>/dev/null || echo '{}')
     NABU_CASA_URL=$(echo "${NABU_CASA_INFO}" | jq -r '.data.instance_url // empty' 2>/dev/null || echo "")
